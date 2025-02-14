@@ -1,13 +1,16 @@
+import os
 import streamlit as st
 import psycopg2
-import os
+from dotenv import load_dotenv
+
+load_dotenv('.env', override=True)
 
 st.title("Sistema de tickets")
 
 def get_db_connection():
-    DB_NAME = "tickets_db"
-    DB_USER = "postgres"
-    DB_PASSWORD = "postgres"
+    DB_NAME = os.getenv("POSTGRES_DB")
+    DB_USER = os.getenv("POSTGRES_USER")
+    DB_PASSWORD = os.getenv("POSTGRES_USER")
     DB_HOST = "localhost"  # Use "db" if connecting from another Docker container
     DB_PORT = "5432"
     return psycopg2.connect(
