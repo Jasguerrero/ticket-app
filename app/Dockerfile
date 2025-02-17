@@ -1,7 +1,6 @@
 FROM python:3.11
-WORKDIR /app
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+WORKDIR /server
 COPY ./app ./app
-COPY .env .env
+ENV PYTHONPATH="/server:${PYTHONPATH}"
+RUN pip install --no-cache-dir -r app/requirements.txt
 CMD ["streamlit", "run", "app/main.py", "--server.port=8501", "--server.address=0.0.0.0"]
