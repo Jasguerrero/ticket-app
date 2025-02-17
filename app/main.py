@@ -1,42 +1,58 @@
-import os
 import streamlit as st
-import psycopg2
 from dotenv import load_dotenv
+from app.model.db_connection import get_db_connection
+from app.model.db_setup import create_tables
+from app.views.user_dashboard import display_dashboard  # Import the new page
 
+create_tables()
 load_dotenv('.env', override=True)
+
+@st.cache_resource
+def get_persistent_state():
+    return {"authenticated": False, "user_role": None, "email": None}
+
+state = get_persistent_state()
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = state["authenticated"]
+    st.session_state.user_role = state["user_role"]
+    st.session_state.email = state["email"]
+
+def authenticate_user(username, password):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT email FROM users WHERE email = %s AND password = %s", (username, password))
+    user = cur.fetchone()
+    
+    if user:
+        st.session_state.authenticated = True
+        st.session_state.user_role = "User"
+        st.session_state.email = username
+        return "User authenticated"
+    
+    cur.execute("SELECT email FROM admin WHERE email = %s AND password = %s", (username, password))
+    admin = cur.fetchone()
+    
+    if admin:
+        st.session_state.authenticated = True
+        st.session_state.user_role = "Admin"
+        st.session_state.email = username
+        return "Admin authenticated"
+    
+    return "User not found"
 
 st.title("Sistema de tickets")
 
-def get_db_connection():
-    DB_NAME = os.getenv("POSTGRES_DB")
-    DB_USER = os.getenv("POSTGRES_USER")
-    DB_PASSWORD = os.getenv("POSTGRES_USER")
-    DB_HOST = "localhost"  # Use "db" if connecting from another Docker container
-    DB_PORT = "5432"
-    return psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT
-    )
-
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
 if not st.session_state.authenticated:
-    username = st.text_input("Usuario")
+    username = st.text_input("Email")
     password = st.text_input("Password", type="password")
     if st.button("Login"):
-        if username == "admin" and password == "admin":
-            st.session_state.authenticated = True
+        message = authenticate_user(username, password)
+        if "authenticated" in message:
             st.experimental_rerun()
         else:
-            st.error("Invalid credentials")
+            st.error(message)
 else:
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT version();")
-    print("PostgreSQL version:", cur.fetchone())
-    st.success("Logged in successfully!")
-    st.write("Ticket Creation Section")
+    # Redirect to the authenticated page
+    display_dashboard(st.session_state.email)  # Pass the username to the new page function
