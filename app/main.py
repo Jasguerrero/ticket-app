@@ -3,7 +3,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from app.model.db_connection import get_db_connection
 from app.model.db_setup import create_tables
-from app.views.dashboard import display_dashboard  # Import the new page
+from app.views.dashboard import display_dashboard
 
 logging.basicConfig(
     format='%(asctime)s - %(filename)s - %(message)s',  # Adds timestamp and file name
