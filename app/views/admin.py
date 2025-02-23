@@ -3,14 +3,19 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
+status_map = {
+    'open': 'abierto',
+    'closed': 'cerrado'
+}
+
 def admin_dashboard(user_id, user_email, conn):
     # Left Sidebar with Clickable Menu Items (No dropdowns, just buttons)
     with st.sidebar:
         st.header("Admin Menu")
-        open_tickets = st.button("📂 Tickets Abierto", key="open_tickets")
-        assigned_not_closed = st.button("📌 Assigned to You (Not Closed)", key="assigned_not_closed")
-        graphs = st.button("📊 Graphs (TBD)", key="graphs")
-        assigned_closed = st.button("✅ Assigned to You (Closed)", key="assigned_closed")
+        open_tickets = st.button("📂 Tickets Abiertos", key="open_tickets")
+        assigned_not_closed = st.button("📌 Asignados (Pendientes)", key="assigned_not_closed")
+        graphs = st.button("📊 Gráficos", key="graphs")
+        assigned_closed = st.button("✅ Historial", key="assigned_closed")
 
     # Handle button clicks and display the corresponding tickets
     if open_tickets:
@@ -27,7 +32,8 @@ def admin_dashboard(user_id, user_email, conn):
 
 
 def display_tickets(conn, assigned_to=None, status=None):
-    logger.info(f"Displaying tickets for status: {status}, assigned_to: {assigned_to}")
+    s = status_map.get(status, status)
+    logger.info(f"Mostrando tickets con status: {s}, asignados a: {assigned_to}")
     """Fetch and display tickets based on the selected menu option"""
     cur = conn.cursor()
 
@@ -49,7 +55,8 @@ def display_tickets(conn, assigned_to=None, status=None):
     cur.execute(query, tuple(params))
     tickets = cur.fetchall()
 
-    st.subheader(f"Showing {status.replace('_', ' ').title()} Tickets")
+    s = "" if not s else s
+    st.subheader(f"Mostrando tickets con status: {s.replace('_', ' ').title()}")
 
     if not tickets:
         st.info("No tickets found.")
@@ -57,13 +64,13 @@ def display_tickets(conn, assigned_to=None, status=None):
         for ticket in tickets:
             ticket_id, category, description, created_at, ticket_status = ticket
             with st.expander(f"🔖 Ticket {ticket_id} - {category} ({ticket_status})"):
-                st.write(f"**Description:** {description}")
-                st.write(f"🕒 Created at: {created_at}")
+                st.write(f"**Descripción:** {description}")
+                st.write(f"🕒 Fecha de creación: {created_at}")
 
     cur.close()
 
 def display_graphs():
     logger.info("Displaying graphs")
     """Placeholder for displaying graphs"""
-    st.subheader("📊 Graphs & Analytics")
-    st.write("Graphs and analytics will be displayed here in the future.")
+    st.subheader("📊 Gráficas y Análisis")
+    st.write("Gráficas y análisis seran desplegadas aqui en un futuro")
