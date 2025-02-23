@@ -7,7 +7,7 @@ def admin_dashboard(user_id, user_email, conn):
     # Left Sidebar with Clickable Menu Items (No dropdowns, just buttons)
     with st.sidebar:
         st.header("Admin Menu")
-        open_tickets = st.button("📂 Open Tickets", key="open_tickets")
+        open_tickets = st.button("📂 Tickets Abierto", key="open_tickets")
         assigned_not_closed = st.button("📌 Assigned to You (Not Closed)", key="assigned_not_closed")
         graphs = st.button("📊 Graphs (TBD)", key="graphs")
         assigned_closed = st.button("✅ Assigned to You (Closed)", key="assigned_closed")
