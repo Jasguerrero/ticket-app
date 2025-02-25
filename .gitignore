@@ -1,4 +1,10 @@
 /venv
 .env
 .vscode
-*__pycache__
+# Ignore all __pycache__ folders recursively
+__pycache__/
+
+# Optionally, ignore compiled Python files
+*.pyc
+*.pyo
+*.pyd

@@ -2,7 +2,6 @@ import logging
 import streamlit as st
 from dotenv import load_dotenv
 from app.model.db_connection import get_db_connection
-from app.model.db_setup import create_tables
 from app.views.dashboard import display_dashboard
 
 logging.basicConfig(
@@ -11,7 +10,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-create_tables()
 conn = get_db_connection()
 load_dotenv('.env', override=True)
 
