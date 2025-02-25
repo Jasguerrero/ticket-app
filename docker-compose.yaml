@@ -15,7 +15,7 @@ services:
         condition: service_healthy
     restart: always
     networks:
-      - postgres_network
+      - ticket-app_postgres_network  # Ensure this matches your network name
 
   db:
     image: postgres:latest
@@ -25,15 +25,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: postgres
-      PGDATA: /var/lib/postgresql/data  # Ensure PGDATA is explicitly set
+      PGDATA: /var/lib/postgresql/data
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data  # Named volume
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
       interval: 10s
       retries: 5
+    networks:
+      - ticket-app_postgres_network  # Ensure this matches your network name
 
   pgadmin:
     image: dpage/pgadmin4
@@ -47,11 +49,11 @@ services:
     depends_on:
       - db
     networks:
-      - postgres_network
+      - ticket-app_postgres_network  # Ensure this matches your network name
 
 volumes:
-  postgres_data:  # Ensure this section is included
+  postgres_data:
 
 networks:
-  postgres_network:
+  ticket-app_postgres_network:  # Define the network here
     driver: bridge
