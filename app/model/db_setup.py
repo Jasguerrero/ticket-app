@@ -9,7 +9,8 @@ def create_tables():
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        user_role TEXT NOT NULL,  -- New 'user_role' column
+        user_name TEXT,
+        user_role TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """

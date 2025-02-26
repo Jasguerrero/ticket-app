@@ -33,18 +33,18 @@ def save_ticket_to_db(ticket_id, category, description, user_id, conn):
         logger.error(f"Error inserting ticket: {e}")
         return False
 
-def get_user_tickets(user_id, conn, offset=0, limit=100):
+def get_user_tickets(user_id, status, conn, offset=0, limit=100):
     """Fetches user tickets ordered by creation timestamp (DESC) with pagination."""
     try:
         cur = conn.cursor()
         query = """
         SELECT id, category, description, created_at 
         FROM tickets 
-        WHERE user_id = %s 
+        WHERE user_id = %s AND status = %s
         ORDER BY created_at DESC 
         LIMIT %s OFFSET %s
         """
-        cur.execute(query, (user_id, limit, offset))
+        cur.execute(query, (user_id, status, limit, offset))
         tickets = cur.fetchall()
         cur.close()
         return tickets
@@ -65,10 +65,10 @@ def count_user_tickets(user_id, conn):
         logger.error(f"Error counting tickets: {e}")
         return 0
 
-def user_dashboard(user_id, user_email, conn):
+def user_dashboard(user_id, user_name, conn):
     logger.info(f"User webpage display")
     
-    st.title(f"Bienvenido, {user_email}")
+    st.title(f"Bienvenido, {user_name}")
 
     if "page" not in st.session_state:
         st.session_state["page"] = "create_ticket"
@@ -92,7 +92,7 @@ def user_dashboard(user_id, user_email, conn):
 
 def display_tickets_user(user_id, status, conn):
     # Pagination setup
-    user_tickets = get_user_tickets(user_id, conn)
+    user_tickets = get_user_tickets(user_id, status, conn)
 
     # **Display Tickets Timeline**
     st.subheader("Tus Tickets")
@@ -103,7 +103,7 @@ def display_tickets_user(user_id, status, conn):
             with st.expander(f"{emoji} {category} - {created_at.strftime('%Y-%m-%d %H:%M:%S')} (ID: {ticket_id})"):
                 st.write(description)
     else:
-        st.write("No tienes tickets abiertos")
+        st.write("Ningun ticket para mostrar")
 
 def create_ticket(user_id, conn):
     # **Ticket Creation Form**

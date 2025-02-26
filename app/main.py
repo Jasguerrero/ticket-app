@@ -27,14 +27,16 @@ if "authenticated" not in st.session_state:
 def authenticate_user(username, password) -> bool:
     cur = conn.cursor()
     
-    cur.execute("SELECT id, email, user_role FROM users WHERE email = %s AND password = %s", (username.lower(), password.lower()))
+    cur.execute("SELECT id, email, user_name, user_role FROM users WHERE email = %s AND password = %s", (username.lower(), password.lower()))
     user = cur.fetchone()
     if user:
         logger.info(f"User: '{username}' authenticated")
-        user_id, user_email, user_role = user
+        user_id, user_email, user_name, user_role = user
+        user_name = user_name if user_name else "Test User"
         st.session_state.authenticated = True
         st.session_state.user_role = user_role
         st.session_state.email = user_email
+        st.session_state.user_name = user_name
         st.session_state.user_id = user_id
         return True
     return False
@@ -59,6 +61,7 @@ else:
     display_dashboard(
         st.session_state.user_id,
         st.session_state.email,
+        st.session_state.user_name,
         st.session_state.user_role,
         conn
     )
