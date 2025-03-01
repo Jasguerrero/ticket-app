@@ -4,6 +4,7 @@ import psycopg2
 import logging
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+from flask_cors import CORS
 
 logger = logging.getLogger(__name__)
 load_dotenv('.env', override=True)
@@ -22,9 +23,11 @@ def get_db_connection():
     )
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/tickets", methods=["POST"])
 def create_ticket():
+    logger.info("Creating ticket")
     data = request.get_json()
     conn = get_db_connection()
     cur = conn.cursor()
@@ -183,6 +186,41 @@ def tickets_not_assign_open():
     cur.close()
     conn.close()
     return jsonify(tickets)
+
+@app.route("/users", methods=["POST"])
+def create_user():
+    data = request.get_json()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        """
+        INSERT INTO users (email, password, user_name, user_role)
+        VALUES (%s, %s, %s, %s) RETURNING *;
+        """,
+        (data['email'], data['password'], data.get('user_name'), data['user_role'])
+    )
+    user = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify(user), 201
+
+@app.route("/auth", methods=["POST"])
+def authenticate_user():
+    data = request.get_json()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute(
+        "SELECT * FROM users WHERE email = %s AND password = %s;",
+        (data['email'], data['password'])
+    )
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if user:
+        return jsonify({"message": "Authentication successful", "user": user})
+    return jsonify({"error": "Invalid credentials"}), 401
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
