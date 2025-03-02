@@ -11,7 +11,7 @@ load_dotenv('.env', override=True)
 
 def get_db_connection():
     DB_USER = os.getenv("POSTGRES_USER")
-    DB_PASSWORD = os.getenv("POSTGRES_USER")
+    DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
     DB_HOST = os.getenv("POSTGRES_HOST")
     DB_PORT = "5432"
     return psycopg2.connect(
