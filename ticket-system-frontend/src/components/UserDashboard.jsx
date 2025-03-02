@@ -293,7 +293,8 @@ function UserDashboard({ user }) {
                         value={newTicket.description}
                         onChange={handleInputChange}
                         required
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                        placeholder="Please describe your issue in detail..."
                       />
                     </div>
                   </div>
