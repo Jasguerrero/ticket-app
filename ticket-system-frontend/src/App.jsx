@@ -9,8 +9,8 @@ import AdminDashboard from './components/AdminDashboard';
 import UserDashboard from './components/UserDashboard';
 import Navbar from './components/Navbar';
 
-// Set the base URL for axios
-axios.defaults.baseURL = 'http://localhost:5001';
+// Set the base URL for axios using environment variable
+axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 
 function App() {
   const [user, setUser] = useState(null);
