@@ -93,24 +93,11 @@ function UserDashboard({ user }) {
     try {
       // Generate a random 5-character alphanumeric ID
       const generateTicketId = () => {
-        let uuid;
-        
-        // Try using crypto.randomUUID() first (modern browsers)
-        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-          uuid = crypto.randomUUID();
-        } 
-        // Fallback method for older browsers
-        else {
-          uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-          });
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let id = '';
+        for (let i = 0; i < 5; i++) {
+          id += chars.charAt(Math.floor(Math.random() * chars.length));
         }
-        
-        // Extract the last 5 characters
-        const id = uuid.slice(-5);
-        
         return id;
       };
       
