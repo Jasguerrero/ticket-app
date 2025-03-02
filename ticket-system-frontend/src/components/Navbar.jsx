@@ -25,7 +25,7 @@ function Navbar({ user, onLogout }) {
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <div className="flex items-center space-x-2">
               <div className="text-sm font-medium text-gray-700">
-                Welcome, {user.user_name || user.email}
+                Welcome, {user.user_name || "Test User"}
               </div>
               <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                 {user.user_role}

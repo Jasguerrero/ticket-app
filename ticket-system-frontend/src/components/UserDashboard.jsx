@@ -1,16 +1,34 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import TicketDetail from './TicketDetail'; // Import the new TicketDetail component
 
 function UserDashboard({ user }) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('create'); // Default to create ticket view
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [newTicket, setNewTicket] = useState({
     category: '',
     sub_category: '',
     description: ''
   });
+
+  // Define categories and subcategories mapping
+  const categoryOptions = [
+    'CRUD',
+    'SOPORTE TECNICO',
+    'SEGURIDAD',
+    'QUEJAS Y SUGERENCIAS'
+  ];
+
+  // Define subcategories based on selected category
+  const subcategoryMapping = {
+    'CRUD': ['CREATE', 'UPDATE', 'DELETE'],
+    'SOPORTE TECNICO': ['BRIGHTSPACE', 'MY ESPACIO', 'TEAMS', 'ALTISIA'],
+    'SEGURIDAD': ['INFRAESTRUCTURA', 'CONDUCTA SOCIAL'],
+    'QUEJAS Y SUGERENCIAS': []
+  };
 
   useEffect(() => {
     // Just load state, don't fetch tickets yet
@@ -21,6 +39,7 @@ function UserDashboard({ user }) {
     try {
       setLoading(true);
       setActiveTab('open');
+      setSelectedTicketId(null);
       const response = await axios.get(`/tickets_user_open/${user.id}`);
       setTickets(response.data);
       setError('');
@@ -35,6 +54,7 @@ function UserDashboard({ user }) {
     try {
       setLoading(true);
       setActiveTab('closed');
+      setSelectedTicketId(null);
       const response = await axios.get(`/tickets_user_closed/${user.id}`);
       setTickets(response.data);
       setError('');
@@ -47,25 +67,51 @@ function UserDashboard({ user }) {
 
   const showCreateTicket = () => {
     setActiveTab('create');
+    setSelectedTicketId(null);
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewTicket({
-      ...newTicket,
-      [name]: value
-    });
+    
+    // If category changed, reset the subcategory
+    if (name === 'category') {
+      setNewTicket({
+        ...newTicket,
+        category: value,
+        sub_category: ''
+      });
+    } else {
+      setNewTicket({
+        ...newTicket,
+        [name]: value
+      });
+    }
   };
 
   const handleCreateTicket = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('/tickets', {
-        id: Math.floor(Math.random() * 1000000), // Simple random ID for demo
+      // Generate a random 5-character alphanumeric ID
+      const generateTicketId = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let id = '';
+        for (let i = 0; i < 5; i++) {
+          id += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return id;
+      };
+      
+      // Prepare ticket data with proper subcategory handling
+      const ticketData = {
+        id: generateTicketId(),
         ...newTicket,
+        // If category is QUEJAS Y SUGERENCIAS, explicitly set sub_category to null
+        sub_category: newTicket.category === 'QUEJAS Y SUGERENCIAS' ? null : newTicket.sub_category,
         user_id: user.id,
         status: 'open'
-      });
+      };
+      
+      await axios.post('/tickets', ticketData);
       setNewTicket({
         category: '',
         sub_category: '',
@@ -77,6 +123,27 @@ function UserDashboard({ user }) {
       setError('Failed to create ticket');
     }
   };
+
+  const handleViewTicketDetail = (ticketId) => {
+    setSelectedTicketId(ticketId);
+  };
+
+  const handleBackFromDetail = () => {
+    setSelectedTicketId(null);
+  };
+
+  // If a ticket is selected, show its details
+  if (selectedTicketId) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <TicketDetail 
+          ticketId={selectedTicketId} 
+          user={user} 
+          onBack={handleBackFromDetail}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -151,15 +218,19 @@ function UserDashboard({ user }) {
                       Category
                     </label>
                     <div className="mt-1">
-                      <input
-                        type="text"
-                        name="category"
+                      <select
                         id="category"
+                        name="category"
                         value={newTicket.category}
                         onChange={handleInputChange}
                         required
                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      />
+                      >
+                        <option value="">Select a category</option>
+                        {categoryOptions.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -168,14 +239,32 @@ function UserDashboard({ user }) {
                       Sub Category
                     </label>
                     <div className="mt-1">
-                      <input
-                        type="text"
-                        name="sub_category"
-                        id="sub_category"
-                        value={newTicket.sub_category}
-                        onChange={handleInputChange}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      />
+                      {newTicket.category === 'QUEJAS Y SUGERENCIAS' ? (
+                        <input
+                          type="text"
+                          name="sub_category"
+                          id="sub_category"
+                          value=""
+                          disabled
+                          className="bg-gray-100 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                          placeholder="Not applicable"
+                        />
+                      ) : (
+                        <select
+                          id="sub_category"
+                          name="sub_category"
+                          value={newTicket.sub_category}
+                          onChange={handleInputChange}
+                          required={newTicket.category !== 'QUEJAS Y SUGERENCIAS'}
+                          disabled={!newTicket.category || newTicket.category === 'QUEJAS Y SUGERENCIAS'}
+                          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                        >
+                          <option value="">Select a subcategory</option>
+                          {newTicket.category && subcategoryMapping[newTicket.category]?.map((subCategory) => (
+                            <option key={subCategory} value={subCategory}>{subCategory}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   </div>
 
@@ -246,6 +335,7 @@ function UserDashboard({ user }) {
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub Category</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
@@ -253,9 +343,14 @@ function UserDashboard({ user }) {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50">
+                  <tr 
+                    key={ticket.id} 
+                    className="hover:bg-gray-50 cursor-pointer" 
+                    onClick={() => handleViewTicketDetail(ticket.id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.category}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.sub_category || '-'}</td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{ticket.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

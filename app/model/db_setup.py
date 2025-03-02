@@ -32,6 +32,16 @@ def create_tables():
     );
     """
     cur.execute(create_tickets_table)
+
+    create_comments_table = """
+    CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        ticket_id CHAR(5) NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """
     
     conn.commit()
     cur.close()
