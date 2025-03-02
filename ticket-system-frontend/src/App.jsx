@@ -17,12 +17,16 @@ function App() {
   useEffect(() => {
     // Fetch runtime configuration from server
     const fetchConfig = async () => {
+      console.log('Fetching config from server...');
       try {
         const response = await fetch('/api/config');
+        console.log('Config response:', response);
         const configData = await response.json();
+        console.log('Config data received:', configData);
         
         // Set axios default base URL
         axios.defaults.baseURL = configData.apiUrl;
+        console.log('Axios base URL set to:', axios.defaults.baseURL);
         
         setConfig(configData);
         
@@ -36,6 +40,7 @@ function App() {
         console.error('Failed to load configuration:', error);
         // Fallback to default configuration
         axios.defaults.baseURL = 'http://localhost:5001';
+        console.log('Using fallback Axios base URL:', axios.defaults.baseURL);
         setLoading(false);
       }
     };
