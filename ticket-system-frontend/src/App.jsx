@@ -9,20 +9,38 @@ import AdminDashboard from './components/AdminDashboard';
 import UserDashboard from './components/UserDashboard';
 import Navbar from './components/Navbar';
 
-// Set the base URL for axios using environment variable
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
-
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
-    // Check if user is stored in localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Fetch runtime configuration from server
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config');
+        const configData = await response.json();
+        
+        // Set axios default base URL
+        axios.defaults.baseURL = configData.apiUrl;
+        
+        setConfig(configData);
+        
+        // Check if user is stored in localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load configuration:', error);
+        // Fallback to default configuration
+        axios.defaults.baseURL = 'http://localhost:5001';
+        setLoading(false);
+      }
+    };
+
+    fetchConfig();
   }, []);
 
   const handleLogin = (userData) => {
