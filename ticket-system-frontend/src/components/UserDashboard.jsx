@@ -161,9 +161,8 @@ function UserDashboard({ user }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">User Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Manage your support tickets
+          Administra tickets de soporte
         </p>
       </div>
       
@@ -193,7 +192,7 @@ function UserDashboard({ user }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            Create Ticket
+            Nuevo
           </button>
           <button
             onClick={fetchUserTickets}
@@ -203,7 +202,7 @@ function UserDashboard({ user }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            My Open Tickets
+            Pendientes
           </button>
           <button
             onClick={fetchClosedTickets}
@@ -213,7 +212,7 @@ function UserDashboard({ user }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            My Closed Tickets
+            Historial
           </button>
         </nav>
       </div>
@@ -222,13 +221,13 @@ function UserDashboard({ user }) {
       {activeTab === 'create' && (
         <div className="bg-white shadow sm:rounded-lg mb-8">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Create New Ticket</h3>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Crear nuevo ticket</h3>
             <div className="mt-5">
               <form onSubmit={handleCreateTicket}>
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                   <div className="sm:col-span-3">
                     <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                      Category
+                      Categoria
                     </label>
                     <div className="mt-1">
                       <select
@@ -239,7 +238,7 @@ function UserDashboard({ user }) {
                         required
                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                       >
-                        <option value="">Select a category</option>
+                        <option value="">Selecciona categoria</option>
                         {categoryOptions.map((category) => (
                           <option key={category} value={category}>{category}</option>
                         ))}
@@ -249,7 +248,7 @@ function UserDashboard({ user }) {
 
                   <div className="sm:col-span-3">
                     <label htmlFor="sub_category" className="block text-sm font-medium text-gray-700">
-                      Sub Category
+                      Subcategoria
                     </label>
                     <div className="mt-1">
                       {newTicket.category === 'QUEJAS Y SUGERENCIAS' ? (
@@ -272,7 +271,7 @@ function UserDashboard({ user }) {
                           disabled={!newTicket.category || newTicket.category === 'QUEJAS Y SUGERENCIAS'}
                           className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
                         >
-                          <option value="">Select a subcategory</option>
+                          <option value="">Selecciona subcategoria</option>
                           {newTicket.category && subcategoryMapping[newTicket.category]?.map((subCategory) => (
                             <option key={subCategory} value={subCategory}>{subCategory}</option>
                           ))}
@@ -283,7 +282,7 @@ function UserDashboard({ user }) {
 
                   <div className="sm:col-span-6">
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                      Description
+                      Descripción
                     </label>
                     <div className="mt-1">
                       <textarea
@@ -294,7 +293,7 @@ function UserDashboard({ user }) {
                         onChange={handleInputChange}
                         required
                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
-                        placeholder="Please describe your issue in detail..."
+                        placeholder="Porfavor escribe tu problema en detalle..."
                       />
                     </div>
                   </div>
@@ -305,7 +304,7 @@ function UserDashboard({ user }) {
                     type="submit"
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    Submit Ticket
+                    Crear Ticket
                   </button>
                 </div>
               </form>
@@ -348,11 +347,11 @@ function UserDashboard({ user }) {
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub Category</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subcategoria</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asignado</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -377,7 +376,7 @@ function UserDashboard({ user }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {ticket.assign_id || (
-                        <span className="text-gray-400 italic">Unassigned</span>
+                        <span className="text-gray-400 italic">Sin asignar</span>
                       )}
                     </td>
                   </tr>
