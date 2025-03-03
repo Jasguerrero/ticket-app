@@ -4,6 +4,13 @@ import { Link } from 'react-router-dom';
 function Navbar({ user, onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Helper function to determine the dashboard path based on user role
+  const getDashboardPath = () => {
+    if (user.user_role === 'admin') return '/admin';
+    if (user.user_role === 'teacher') return '/teacher';
+    return '/user';
+  };
+
   return (
     <nav className="bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -14,7 +21,7 @@ function Navbar({ user, onLogout }) {
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link 
-                to={user.user_role === 'admin' ? '/admin' : '/user'} 
+                to={getDashboardPath()}
                 className="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
                 Panel
@@ -66,8 +73,9 @@ function Navbar({ user, onLogout }) {
         <div className="sm:hidden">
           <div className="pt-2 pb-3 space-y-1">
             <Link
-              to={user.user_role === 'admin' ? '/admin' : '/user'}
+              to={getDashboardPath()}
               className="bg-blue-50 border-blue-500 text-blue-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+              onClick={() => setIsOpen(false)}
             >
               Dashboard
             </Link>
@@ -86,7 +94,10 @@ function Navbar({ user, onLogout }) {
             </div>
             <div className="mt-3 space-y-1">
               <button
-                onClick={onLogout}
+                onClick={() => {
+                  onLogout();
+                  setIsOpen(false);
+                }}
                 className="block px-4 py-2 text-base font-medium text-red-600 hover:text-red-800 hover:bg-gray-100"
               >
                 Logout

@@ -944,5 +944,216 @@ def get_unread_announcements_count(group_id):
         "unread_count": result['unread_count']
     })
 
+@app.route("/groups", methods=["POST"])
+def create_group():
+    """Create a new group (teacher only)"""
+    data = request.get_json()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Check if the teacher exists
+    cur.execute("SELECT * FROM users WHERE id = %s;", (data['teacher_id'],))
+    teacher = cur.fetchone()
+    
+    if not teacher:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Teacher not found"}), 404
+    
+    if teacher['user_role'] != 'teacher' and teacher['user_role'] != 'admin':
+        cur.close()
+        conn.close()
+        return jsonify({"error": "User is not a teacher or admin"}), 403
+    
+    # Create the group
+    cur.execute(
+        """
+        INSERT INTO groups (name, description, teacher_id)
+        VALUES (%s, %s, %s) RETURNING *;
+        """,
+        (data['name'], data.get('description'), data['teacher_id'])
+    )
+    
+    group = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return jsonify(group), 201
+
+@app.route("/groups/<id>", methods=["GET"])
+def get_group(id):
+    """Get a specific group"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("SELECT * FROM groups WHERE id = %s;", (id,))
+    group = cur.fetchone()
+    
+    cur.close()
+    conn.close()
+    
+    if not group:
+        return jsonify({"error": "Group not found"}), 404
+    
+    return jsonify(group)
+
+@app.route("/groups/<id>/members/add", methods=["POST"])
+def add_members_to_group(id):
+    """Add multiple members to a group from a list of usernames"""
+    data = request.get_json()
+    user_names = data.get('user_names', [])
+    teacher_id = data.get('teacher_id')
+    
+    if not user_names:
+        return jsonify({"error": "No user names provided"}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Check if the group exists
+    cur.execute("SELECT * FROM groups WHERE id = %s;", (id,))
+    group = cur.fetchone()
+    
+    if not group:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Group not found"}), 404
+    
+    # Check if user is authorized (must be the teacher who owns the group or an admin)
+    cur.execute("SELECT * FROM users WHERE id = %s;", (teacher_id,))
+    requester = cur.fetchone()
+    
+    if not requester:
+        cur.close()
+        conn.close() 
+        return jsonify({"error": "Requester not found"}), 404
+    
+    if requester['user_role'] != 'admin' and (requester['user_role'] != 'teacher' or requester['id'] != group['teacher_id']):
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Only the teacher who created the group or an admin can add members"}), 403
+    
+    # Add members
+    added_count = 0
+    not_found = []
+    already_members = []
+    
+    for user_name in user_names:
+        # Find user by username
+        # Find user by username
+        cur.execute("SELECT * FROM users WHERE user_name = %s;", (str(user_name),))
+        user = cur.fetchone()
+        
+        if not user:
+            not_found.append(user_name)
+            continue
+        
+        # Check if already a member
+        cur.execute(
+            "SELECT * FROM user_groups WHERE user_id = %s AND group_id = %s;",
+            (user['id'], id)
+        )
+        
+        if cur.fetchone():
+            already_members.append(user_name)
+            continue
+        
+        # Add to group
+        try:
+            cur.execute(
+                """
+                INSERT INTO user_groups (user_id, group_id)
+                VALUES (%s, %s);
+                """,
+                (user['id'], id)
+            )
+            added_count += 1
+        except Exception as e:
+            # Handle error
+            print(f"Error adding user {user_name}: {e}")
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    return jsonify({
+        "success": True,
+        "added_count": added_count,
+        "not_found": not_found,
+        "already_members": already_members
+    })
+
+# Add these endpoints to your Flask app
+
+@app.route("/users/<user_id>/groups", methods=["GET"])
+def get_user_groups(user_id):
+    """Get all groups that a user belongs to"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    # Check if the user exists
+    cur.execute("SELECT * FROM users WHERE id = %s;", (user_id,))
+    user = cur.fetchone()
+    
+    if not user:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+    
+    # Get all groups that the user belongs to
+    cur.execute(
+        """
+        SELECT g.*, 
+               (SELECT COUNT(*) FROM announcements a 
+                WHERE a.group_id = g.id 
+                AND NOT EXISTS (
+                    SELECT 1 FROM announcement_reads ar 
+                    WHERE ar.announcement_id = a.id AND ar.user_id = %s
+                )) as unread_count
+        FROM groups g
+        JOIN user_groups ug ON g.id = ug.group_id
+        WHERE ug.user_id = %s
+        ORDER BY g.name;
+        """,
+        (user_id, user_id)
+    )
+    
+    groups = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    return jsonify(groups)
+
+
+@app.route("/groups/<group_id>/users/<user_id>/check", methods=["GET"])
+def check_user_in_group(group_id, user_id):
+    """Check if a user is a member of a specific group"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute(
+        "SELECT * FROM user_groups WHERE user_id = %s AND group_id = %s;",
+        (user_id, group_id)
+    )
+    
+    is_member = cur.fetchone() is not None
+    
+    # If not a member, also check if they're the teacher of the group
+    if not is_member:
+        cur.execute(
+            "SELECT * FROM groups WHERE id = %s AND teacher_id = %s;",
+            (group_id, user_id)
+        )
+        is_teacher = cur.fetchone() is not None
+        
+        # Consider the user part of the group if they're the teacher
+        is_member = is_teacher
+    
+    cur.close()
+    conn.close()
+    
+    return jsonify({"is_member": is_member})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

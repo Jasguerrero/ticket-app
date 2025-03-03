@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import TicketDetail from './TicketDetail'; // Import the new TicketDetail component
+import TicketDetail from './TicketDetail';
 
 function UserDashboard({ user }) {
   const [tickets, setTickets] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('create'); // Default to create ticket view
   const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
   const [newTicket, setNewTicket] = useState({
     category: '',
     sub_category: '',
@@ -40,6 +43,7 @@ function UserDashboard({ user }) {
       setLoading(true);
       setActiveTab('open');
       setSelectedTicketId(null);
+      setSelectedAnnouncement(null);
       const response = await axios.get(`/tickets_user_open/${user.id}`);
       setTickets(response.data);
       setError('');
@@ -55,6 +59,7 @@ function UserDashboard({ user }) {
       setLoading(true);
       setActiveTab('closed');
       setSelectedTicketId(null);
+      setSelectedAnnouncement(null);
       const response = await axios.get(`/tickets_user_closed/${user.id}`);
       setTickets(response.data);
       setError('');
@@ -65,9 +70,57 @@ function UserDashboard({ user }) {
     }
   };
 
+  const fetchUserGroups = async () => {
+    try {
+      setLoading(true);
+      setActiveTab('groups');
+      setSelectedTicketId(null);
+      setSelectedAnnouncement(null);
+      
+      // This assumes an API endpoint that returns all groups a user belongs to
+      const response = await axios.get(`/users/${user.id}/groups`);
+      setGroups(response.data);
+      setError('');
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        // If 404, user has no groups, which is fine
+        setGroups([]);
+      } else {
+        setError('Failed to fetch your groups');
+        console.error(err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserAnnouncements = async () => {
+    try {
+      setLoading(true);
+      setActiveTab('announcements');
+      setSelectedTicketId(null);
+      setSelectedAnnouncement(null);
+      
+      const response = await axios.get(`/users/${user.id}/announcements`);
+      setAnnouncements(response.data);
+      setError('');
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        // If 404, user has no announcements, which is fine
+        setAnnouncements([]);
+      } else {
+        setError('Failed to fetch announcements');
+        console.error(err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const showCreateTicket = () => {
     setActiveTab('create');
     setSelectedTicketId(null);
+    setSelectedAnnouncement(null);
   };
 
   const handleInputChange = (e) => {
@@ -141,8 +194,35 @@ function UserDashboard({ user }) {
     setSelectedTicketId(ticketId);
   };
 
+  const handleViewAnnouncementDetail = (announcement) => {
+    setSelectedAnnouncement(announcement);
+    
+    // Mark announcement as read if it's not already
+    if (!announcement.is_read) {
+      markAnnouncementAsRead(announcement.id);
+    }
+  };
+
+  const markAnnouncementAsRead = async (announcementId) => {
+    try {
+      await axios.post(`/announcements/${announcementId}/mark-read`, {
+        user_id: user.id
+      });
+      
+      // Update the local state to mark this announcement as read
+      setAnnouncements(prev => 
+        prev.map(ann => 
+          ann.id === announcementId ? { ...ann, is_read: true } : ann
+        )
+      );
+    } catch (err) {
+      console.error('Failed to mark announcement as read:', err);
+    }
+  };
+
   const handleBackFromDetail = () => {
     setSelectedTicketId(null);
+    setSelectedAnnouncement(null);
   };
 
   // If a ticket is selected, show its details
@@ -154,6 +234,49 @@ function UserDashboard({ user }) {
           user={user} 
           onBack={handleBackFromDetail}
         />
+      </div>
+    );
+  }
+  
+  // If an announcement is selected, show its details
+  if (selectedAnnouncement) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
+          <button
+            onClick={handleBackFromDetail}
+            className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500"
+          >
+            <svg className="mr-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            Volver a anuncios
+          </button>
+        </div>
+        
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="px-4 py-5 sm:px-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">{selectedAnnouncement.title}</h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                  {selectedAnnouncement.is_pinned && (
+                    <span className="inline-flex items-center mr-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Fijado
+                    </span>
+                  )}
+                  <span className="inline-flex items-center mr-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {selectedAnnouncement.group_name}
+                  </span>
+                  Publicado el {new Date(selectedAnnouncement.created_at).toLocaleDateString()} a las {new Date(selectedAnnouncement.created_at).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 text-sm text-gray-900 whitespace-pre-line">
+              {selectedAnnouncement.content}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -192,7 +315,7 @@ function UserDashboard({ user }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            Nuevo
+            Nuevo Ticket
           </button>
           <button
             onClick={fetchUserTickets}
@@ -202,7 +325,7 @@ function UserDashboard({ user }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            Pendientes
+            Tickets Pendientes
           </button>
           <button
             onClick={fetchClosedTickets}
@@ -212,7 +335,32 @@ function UserDashboard({ user }) {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            Historial
+            Tickets Cerrados
+          </button>
+          <button
+            onClick={fetchUserGroups}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'groups'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Mis Grupos
+          </button>
+          <button
+            onClick={fetchUserAnnouncements}
+            className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'announcements'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Anuncios
+            {announcements.filter(a => !a.is_read).length > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                {announcements.filter(a => !a.is_read).length}
+              </span>
+            )}
           </button>
         </nav>
       </div>
@@ -314,11 +462,11 @@ function UserDashboard({ user }) {
       )}
       
       {/* Tickets display */}
-      {activeTab !== 'create' && loading ? (
+      {(activeTab === 'open' || activeTab === 'closed') && loading ? (
         <div className="flex justify-center items-center py-12">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
         </div>
-      ) : activeTab !== 'create' && tickets.length === 0 ? (
+      ) : (activeTab === 'open' || activeTab === 'closed') && tickets.length === 0 ? (
         <div className="bg-white shadow overflow-hidden sm:rounded-md py-12 px-4 text-center">
           <svg className="h-12 w-12 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -326,8 +474,8 @@ function UserDashboard({ user }) {
           <h3 className="mt-2 text-sm font-medium text-gray-900">No tickets found</h3>
           <p className="mt-1 text-sm text-gray-500">
             {activeTab === 'open' 
-              ? "You don't have any open tickets at the moment." 
-              : "You don't have any closed tickets."}
+              ? "No tienes tickets pendientes en este momento." 
+              : "No tienes tickets cerrados."}
           </p>
           {activeTab === 'closed' && (
             <div className="mt-6">
@@ -335,12 +483,12 @@ function UserDashboard({ user }) {
                 onClick={showCreateTicket}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Create a new ticket
+                Crear un nuevo ticket
               </button>
             </div>
           )}
         </div>
-      ) : activeTab !== 'create' && (
+      ) : (activeTab === 'open' || activeTab === 'closed') && (
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -384,6 +532,105 @@ function UserDashboard({ user }) {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+      
+      {/* Groups display */}
+      {activeTab === 'groups' && loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      ) : activeTab === 'groups' && groups.length === 0 ? (
+        <div className="bg-white shadow overflow-hidden sm:rounded-md py-12 px-4 text-center">
+          <svg className="h-12 w-12 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No perteneces a ningún grupo</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            Contacta a tu profesor para ser agregado a un grupo.
+          </p>
+        </div>
+      ) : activeTab === 'groups' && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {groups.map((group) => (
+            <div 
+              key={group.id} 
+              className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-300"
+              onClick={() => window.location.href = `/groups/${group.id}`}
+            >
+              <div className="px-4 py-5 sm:p-6">
+                <h3 className="text-lg leading-6 font-medium text-gray-900 truncate">
+                  {group.name}
+                </h3>
+                <div className="mt-2 max-w-xl text-sm text-gray-500 line-clamp-3">
+                  <p>{group.description || 'Sin descripción'}</p>
+                </div>
+                <div className="mt-3 flex items-center text-sm text-gray-500">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {group.unread_count > 0 ? `${group.unread_count} anuncios sin leer` : 'No hay anuncios sin leer'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Announcements display */}
+      {activeTab === 'announcements' && loading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      ) : activeTab === 'announcements' && announcements.length === 0 ? (
+        <div className="bg-white shadow overflow-hidden sm:rounded-md py-12 px-4 text-center">
+          <svg className="h-12 w-12 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay anuncios</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            No tienes anuncios para mostrar en este momento.
+          </p>
+        </div>
+      ) : activeTab === 'announcements' && (
+        <div className="space-y-4">
+          {announcements.map((announcement) => (
+            <div 
+              key={announcement.id} 
+              className={`bg-white shadow overflow-hidden sm:rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-300 ${announcement.is_pinned ? 'border-l-4 border-blue-500' : ''} ${!announcement.is_read ? 'border-l-4 border-green-500' : ''}`}
+              onClick={() => handleViewAnnouncementDetail(announcement)}
+            >
+              <div className="px-4 py-4 sm:px-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 truncate">
+                      {announcement.title}
+                      {!announcement.is_read && (
+                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Nuevo
+                        </span>
+                      )}
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500 flex items-center">
+                      <span className="mr-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {announcement.group_name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(announcement.created_at).toLocaleDateString()}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="ml-4 flex-shrink-0">
+                    <span className="text-xs text-gray-500">
+                      {announcement.teacher_name}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 text-sm text-gray-500 line-clamp-2 whitespace-pre-line">
+                  {announcement.content}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

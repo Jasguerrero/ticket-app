@@ -7,6 +7,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import UserDashboard from './components/UserDashboard';
+import TeacherDashboard from './components/TeacherDashboard';
 import Navbar from './components/Navbar';
 
 function App() {
@@ -68,6 +69,20 @@ function App() {
     );
   }
 
+  // Determine which dashboard to redirect to based on user role
+  const getDashboardPath = () => {
+    if (!user) return '/';
+    
+    switch (user.user_role) {
+      case 'admin':
+        return '/admin';
+      case 'teacher':
+        return '/teacher';
+      default:
+        return '/user';
+    }
+  };
+
   return (
     <Router>
       {user && <Navbar user={user} onLogout={handleLogout} />}
@@ -77,11 +92,7 @@ function App() {
             path="/" 
             element={
               user ? (
-                user.user_role === 'admin' ? (
-                  <Navigate to="/admin" />
-                ) : (
-                  <Navigate to="/user" />
-                )
+                <Navigate to={getDashboardPath()} />
               ) : (
                 <Login onLogin={handleLogin} />
               )
@@ -98,15 +109,30 @@ function App() {
             } 
           />
           <Route 
-            path="/user" 
+            path="/teacher" 
             element={
-              user ? (
-                <UserDashboard user={user} />
+              user && user.user_role === 'teacher' ? (
+                <TeacherDashboard user={user} />
               ) : (
                 <Navigate to="/" />
               )
             } 
           />
+          <Route 
+            path="/user" 
+            element={
+              user ? (
+                user.user_role === 'teacher' ? (
+                  <Navigate to="/teacher" />
+                ) : (
+                  <UserDashboard user={user} />
+                )
+              ) : (
+                <Navigate to="/" />
+              )
+            } 
+          />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
     </Router>
