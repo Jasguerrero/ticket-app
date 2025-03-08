@@ -167,10 +167,10 @@ def close_ticket(id):
     
     # Create the notification message
     if last_comment:
-        notification_message = f"Ticket #{id} ({category}/{sub_category}) has been closed. Last comment: \"{last_comment['content'][:100]}...\""
+        notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro.\n\n Ultimo comentario: \"{last_comment['content'][:100]}...\""
         comment_author = last_comment['user_name']
     else:
-        notification_message = f"Ticket #{id} ({category}/{sub_category}) has been closed."
+        notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro."
         comment_author = None
     
     # Create extra_info JSON

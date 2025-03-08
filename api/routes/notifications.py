@@ -44,14 +44,15 @@ def get_pending_notifications():
     
     return jsonify(notifications)
 
-@notifications_bp.route("/notifications/<notification_id>/mark-read", methods=["POST"])
-def mark_notification_read(notification_id):
+@notifications_bp.route("/notifications/<notification_id>/update-status", methods=["POST"])
+def update_status_notification(notification_id):
     """Mark a notification as read"""
     data = request.get_json()
     user_id = data.get('user_id')
+    status = data.get('status')
     
-    if not user_id:
-        return jsonify({"error": "User ID is required"}), 400
+    if not user_id or not status:
+        return jsonify({"error": "User ID and status is required"}), 400
     
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
@@ -75,11 +76,11 @@ def mark_notification_read(notification_id):
     cur.execute(
         """
         UPDATE notifications
-        SET status = 'read', updated_at = CURRENT_TIMESTAMP
+        SET status = %s, updated_at = CURRENT_TIMESTAMP
         WHERE id = %s
         RETURNING *;
         """,
-        (notification_id,)
+        (status, notification_id)
     )
     
     updated_notification = cur.fetchone()

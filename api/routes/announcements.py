@@ -59,7 +59,7 @@ def create_announcement(group_id):
     group_members = cur.fetchall()
     
     # Create a notification message
-    notification_message = f"Nuevo anuncio en {group['name']}: {data['title']}\n {data['content']}"
+    notification_message = f"Nuevo anuncio en {group['name']}:\n\n{data['title']}\n {data['content'][:100]}..."
     
     # Create the JSON extra_info as a string
     extra_info = json.dumps({

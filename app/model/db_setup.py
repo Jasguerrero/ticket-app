@@ -10,6 +10,7 @@ def create_tables():
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         user_name TEXT,
+        phone TEXT,
         user_role TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -81,6 +82,20 @@ def create_tables():
         read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (announcement_id, user_id)
     );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    message TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    type VARCHAR(50) NOT NULL,
+    extra_info TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id);
+    CREATE INDEX IF NOT EXISTS notifications_status_idx ON notifications(status);
     """
     
     conn.commit()
