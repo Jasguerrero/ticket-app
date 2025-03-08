@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+import json
 from api.database import get_db_connection, dict_cursor
 
 # Create blueprint
@@ -44,6 +45,38 @@ def create_announcement(group_id):
     )
     
     announcement = cur.fetchone()
+    
+    # Get all users in the group to create notifications for them
+    cur.execute(
+        """
+        SELECT user_id 
+        FROM user_groups 
+        WHERE group_id = %s;
+        """,
+        (group_id,)
+    )
+    
+    group_members = cur.fetchall()
+    
+    # Create a notification message
+    notification_message = f"Nuevo anuncio en {group['name']}: {data['title']}\n {data['content']}"
+    
+    # Create the JSON extra_info as a string
+    extra_info = json.dumps({
+        "group": group_id,
+        "title": data['title']
+    })
+    
+    # Create notifications for each group member
+    for member in group_members:
+        cur.execute(
+            """
+            INSERT INTO notifications (message, user_id, status, type, extra_info)
+            VALUES (%s, %s, 'pending', 'group', %s);
+            """,
+            (notification_message, member['user_id'], extra_info)
+        )
+    
     conn.commit()
     
     # Add teacher name to the response

@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 import logging
+import json
 from api.database import get_db_connection, dict_cursor
 
 # Configure logger
@@ -124,20 +125,77 @@ def assign_ticket(id):
 @tickets_bp.route("/close_ticket/<id>", methods=["PUT"])
 def close_ticket(id):
     conn = get_db_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=dict_cursor())
+    
+    # Update ticket status to closed
     cur.execute(
         """
-        UPDATE tickets SET status = 'closed', closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *;
+        UPDATE tickets 
+        SET status = 'closed', closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = %s 
+        RETURNING *;
         """,
         (id,)
     )
     ticket = cur.fetchone()
+    
+    if not ticket:
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Ticket not found"}), 404
+    
+    # Get the ticket creator's ID (this will be the notification recipient)
+    ticket_creator_id = ticket['user_id']
+    
+    # Get the category and subcategory for the notification message
+    category = ticket['category']
+    sub_category = ticket['sub_category'] if ticket['sub_category'] else ""
+    
+    # Get the last comment on the ticket (if any)
+    cur.execute(
+        """
+        SELECT c.*, u.user_name
+        FROM comments c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.ticket_id = %s
+        ORDER BY c.created_at DESC
+        LIMIT 1;
+        """,
+        (id,)
+    )
+    last_comment = cur.fetchone()
+    
+    # Create the notification message
+    if last_comment:
+        notification_message = f"Ticket #{id} ({category}/{sub_category}) has been closed. Last comment: \"{last_comment['content'][:100]}...\""
+        comment_author = last_comment['user_name']
+    else:
+        notification_message = f"Ticket #{id} ({category}/{sub_category}) has been closed."
+        comment_author = None
+    
+    # Create extra_info JSON
+    extra_info = json.dumps({
+        "ticket_id": id,
+        "category": category,
+        "sub_category": sub_category,
+        "last_comment": last_comment['content'] if last_comment else None,
+        "comment_author": comment_author
+    })
+    
+    # Create notification for the ticket creator
+    cur.execute(
+        """
+        INSERT INTO notifications (message, user_id, status, type, extra_info)
+        VALUES (%s, %s, 'pending', 'ticket', %s);
+        """,
+        (notification_message, ticket_creator_id, extra_info)
+    )
+    
     conn.commit()
     cur.close()
     conn.close()
-    if ticket:
-        return jsonify(ticket)
-    return jsonify({"error": "Ticket not found"}), 404
+    
+    return jsonify(ticket)
 
 @tickets_bp.route("/tickets_user_open/<user_id>", methods=["GET"])
 def tickets_user_open(user_id):
