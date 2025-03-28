@@ -8,6 +8,7 @@ import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import UserDashboard from './components/UserDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
+import SuperUserDashboard from './components/SuperUserDashboard';
 import Navbar from './components/Navbar';
 
 function App() {
@@ -78,6 +79,8 @@ function App() {
         return '/admin';
       case 'teacher':
         return '/teacher';
+      case 'super-user':
+        return '/super-user'
       default:
         return '/user';
     }
@@ -127,6 +130,16 @@ function App() {
                 ) : (
                   <UserDashboard user={user} />
                 )
+              ) : (
+                <Navigate to="/" />
+              )
+            } 
+          />
+          <Route 
+            path="/super-user" 
+            element={
+              user && user.user_role === 'super-user' ? (
+                <SuperUserDashboard user={user} />
               ) : (
                 <Navigate to="/" />
               )

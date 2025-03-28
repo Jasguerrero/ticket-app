@@ -22,6 +22,24 @@ def create_user():
     conn.close()
     return jsonify(user), 201
 
+@users_bp.route("/admin_users", methods=["GET"])
+def get_admin_users():
+    """Get all admin users for the superuser dashboard assignment dropdown"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=dict_cursor())
+    cur.execute(
+        """
+        SELECT id, user_name, email, user_role 
+        FROM users 
+        WHERE user_role = 'admin' 
+        ORDER BY user_name;
+        """
+    )
+    admin_users = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(admin_users)
+
 @users_bp.route("/auth", methods=["POST"])
 def authenticate_user():
     data = request.get_json()

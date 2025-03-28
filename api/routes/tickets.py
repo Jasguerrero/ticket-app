@@ -38,6 +38,28 @@ def get_tickets():
     conn.close()
     return jsonify(tickets)
 
+@tickets_bp.route("/all_open_tickets", methods=["GET"])
+def get_all_open_tickets():
+    """Get all open tickets in the system for superuser dashboard"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=dict_cursor())
+    cur.execute("SELECT * FROM tickets WHERE status = 'open' ORDER BY created_at DESC;")
+    tickets = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(tickets)
+
+@tickets_bp.route("/all_closed_tickets", methods=["GET"])
+def get_all_closed_tickets():
+    """Get all closed tickets in the system for superuser dashboard"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=dict_cursor())
+    cur.execute("SELECT * FROM tickets WHERE status = 'closed' ORDER BY closed_at DESC;")
+    tickets = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(tickets)
+
 @tickets_bp.route("/tickets/<id>", methods=["GET"])
 def get_ticket(id):
     conn = get_db_connection()
