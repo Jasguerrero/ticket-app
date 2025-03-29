@@ -232,7 +232,9 @@
           "color": {
             "mode": "thresholds"
           },
+          "fieldMinMax": false,
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -241,12 +243,12 @@
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 10
+                "color": "#EAB839",
+                "value": 5
               },
               {
                 "color": "red",
-                "value": 20
+                "value": 15
               }
             ]
           }
@@ -320,16 +322,25 @@
             "mode": "thresholds"
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
-            "mode": "absolute",
+            "mode": "percentage",
             "steps": [
               {
                 "color": "red",
                 "value": null
               },
               {
-                "color": "green",
+                "color": "red",
                 "value": 5
+              },
+              {
+                "color": "#EAB839",
+                "value": 15
+              },
+              {
+                "color": "green",
+                "value": 25
               }
             ]
           },
@@ -403,9 +414,10 @@
           "color": {
             "mode": "thresholds"
           },
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
-            "mode": "absolute",
+            "mode": "percentage",
             "steps": [
               {
                 "color": "green",
@@ -813,7 +825,9 @@
               "viz": false
             }
           },
-          "mappings": []
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "none"
         },
         "overrides": []
       },
@@ -825,18 +839,22 @@
       },
       "id": 9,
       "options": {
+        "displayLabels": [],
         "legend": {
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent"
+          ]
         },
-        "pieType": "pie",
+        "pieType": "donut",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
-          "values": false
+          "values": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -1237,6 +1255,6 @@
   "timezone": "",
   "title": "SITIA panel",
   "uid": "ticket-system-dashboard",
-  "version": 19,
+  "version": 24,
   "weekStart": ""
 }
