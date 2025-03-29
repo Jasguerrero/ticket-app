@@ -615,12 +615,12 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": true,
+            "axisBorderShow": false,
             "axisCenteredZero": false,
-            "axisColorMode": "series",
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "fillOpacity": 17,
+            "fillOpacity": 80,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -629,14 +629,12 @@
             },
             "lineWidth": 1,
             "scaleDistribution": {
-              "log": 2,
-              "type": "log"
+              "type": "linear"
             },
             "thresholdsStyle": {
               "mode": "off"
             }
           },
-          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -647,7 +645,7 @@
               },
               {
                 "color": "red",
-                "value": 5
+                "value": 80
               }
             ]
           }
@@ -660,31 +658,27 @@
         "x": 12,
         "y": 16
       },
-      "id": 7,
+      "id": 12,
       "options": {
         "barRadius": 0,
-        "barWidth": 0.63,
-        "colorByField": "Tickets",
+        "barWidth": 0.97,
         "fullHighlight": false,
         "groupWidth": 0.7,
         "legend": {
-          "calcs": [
-            "max"
-          ],
+          "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
         "orientation": "auto",
         "showValue": "auto",
-        "stacking": "normal",
-        "text": {},
+        "stacking": "none",
         "tooltip": {
-          "hideZeros": true,
-          "mode": "multi",
-          "sort": "asc"
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
         },
-        "xTickLabelRotation": 15,
+        "xTickLabelRotation": 0,
         "xTickLabelSpacing": 0
       },
       "pluginVersion": "11.5.2",
@@ -697,7 +691,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  u.user_name AS \"Usuario\",\n  COUNT(t.id) AS \"Tickets\"\nFROM users u\nJOIN tickets t ON u.id = t.user_id\nGROUP BY u.user_name\nORDER BY \"Tickets\" DESC\n",
+          "rawSql": "SELECT\n  u.user_name,\n  COUNT(t.id) as \"tickets\"\nFROM users u\nJOIN tickets t ON u.id = t.assign_id\nWHERE u.user_role = 'admin' AND t.status = 'closed'\nGROUP BY u.user_name\nORDER BY \"tickets\" DESC",
           "refId": "A",
           "sql": {
             "columns": [
@@ -718,7 +712,7 @@
           }
         }
       ],
-      "title": "Usuarios con Más Tickets",
+      "title": "Tickets cerrados por usuario",
       "type": "barchart"
     },
     {
@@ -1136,12 +1130,12 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
+            "axisBorderShow": true,
             "axisCenteredZero": false,
-            "axisColorMode": "text",
+            "axisColorMode": "series",
             "axisLabel": "",
             "axisPlacement": "auto",
-            "fillOpacity": 80,
+            "fillOpacity": 17,
             "gradientMode": "none",
             "hideFrom": {
               "legend": false,
@@ -1150,12 +1144,14 @@
             },
             "lineWidth": 1,
             "scaleDistribution": {
-              "type": "linear"
+              "log": 2,
+              "type": "log"
             },
             "thresholdsStyle": {
               "mode": "off"
             }
           },
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1166,7 +1162,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 5
               }
             ]
           }
@@ -1179,27 +1175,31 @@
         "x": 12,
         "y": 40
       },
-      "id": 12,
+      "id": 7,
       "options": {
         "barRadius": 0,
-        "barWidth": 0.97,
+        "barWidth": 0.63,
+        "colorByField": "Tickets",
         "fullHighlight": false,
         "groupWidth": 0.7,
         "legend": {
-          "calcs": [],
+          "calcs": [
+            "max"
+          ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
         },
         "orientation": "auto",
         "showValue": "auto",
-        "stacking": "none",
+        "stacking": "normal",
+        "text": {},
         "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
+          "hideZeros": true,
+          "mode": "multi",
+          "sort": "asc"
         },
-        "xTickLabelRotation": 0,
+        "xTickLabelRotation": 15,
         "xTickLabelSpacing": 0
       },
       "pluginVersion": "11.5.2",
@@ -1212,7 +1212,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  u.user_name AS \"Profesor\",\n  COUNT(t.id) AS \"Tickets Asignados\"\nFROM users u\nJOIN tickets t ON u.id = t.assign_id\nWHERE u.user_role = 'teacher'\nGROUP BY u.user_name\nORDER BY \"Tickets Asignados\" DESC",
+          "rawSql": "SELECT\n  u.user_name AS \"Usuario\",\n  COUNT(t.id) AS \"Tickets\"\nFROM users u\nJOIN tickets t ON u.id = t.user_id\nGROUP BY u.user_name\nORDER BY \"Tickets\" DESC\n",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1233,7 +1233,7 @@
           }
         }
       ],
-      "title": "Tickets Asignados por Profesor",
+      "title": "Usuarios con Más Tickets",
       "type": "barchart"
     }
   ],
@@ -1255,6 +1255,6 @@
   "timezone": "",
   "title": "SITIA panel",
   "uid": "ticket-system-dashboard",
-  "version": 24,
+  "version": 27,
   "weekStart": ""
 }
