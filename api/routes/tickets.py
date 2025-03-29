@@ -17,10 +17,10 @@ def create_ticket():
     cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO tickets (id, category, sub_category, description, user_id, assign_id, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *;
+        INSERT INTO tickets (id, category, sub_category, description, user_id, assign_id, status, priority)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;
         """,
-        (data['id'], data['category'], data.get('sub_category'), data['description'], data['user_id'], data.get('assign_id'), data.get('status', 'open'))
+        (data['id'], data['category'], data.get('sub_category'), data['description'], data['user_id'], data.get('assign_id'), data.get('status', 'open'), data.get('priority', 'medium'))
     )
     ticket = cur.fetchone()
     conn.commit()

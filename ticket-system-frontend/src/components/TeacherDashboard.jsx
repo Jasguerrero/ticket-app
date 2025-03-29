@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import TicketDetail from './TicketDetail'; // Reuse the ticket detail component
-import GroupDetail from './GroupDetail'; // We'll create this component next
-import CreateGroup from './CreateGroup'; // We'll create this component next
+import TicketDetail from './TicketDetail';
+import GroupDetail from './GroupDetail';
+import CreateGroup from './CreateGroup';
 
 function TeacherDashboard({ user }) {
   const [activeSection, setActiveSection] = useState('groups'); // Default to groups section
