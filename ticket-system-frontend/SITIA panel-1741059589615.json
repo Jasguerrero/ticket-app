@@ -152,6 +152,7 @@
               "viz": false
             }
           },
+          "fieldMinMax": false,
           "mappings": []
         },
         "overrides": []
@@ -164,10 +165,14 @@
       },
       "id": 2,
       "options": {
+        "displayLabels": [],
         "legend": {
           "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent"
+          ]
         },
         "pieType": "pie",
         "reduceOptions": {
@@ -175,7 +180,7 @@
             "lastNotNull"
           ],
           "fields": "",
-          "values": false
+          "values": true
         },
         "tooltip": {
           "hideZeros": false,
@@ -193,7 +198,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  category AS \"Categoría\",\n  COUNT(*) as \"Cantidad\"\nFROM tickets\nGROUP BY category\nORDER BY \"Cantidad\" DESC",
+          "rawSql": "SELECT\n  category,\n  COUNT(*)\nFROM tickets\nGROUP BY category\nORDER BY count DESC",
           "refId": "A",
           "sql": {
             "columns": [
@@ -849,7 +854,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT \n  CASE \n    WHEN now() - created_at < interval '24 hours' THEN '<24h'\n    WHEN now() - created_at < interval '3 days' THEN '1-3d'\n    WHEN now() - created_at < interval '7 days' THEN '3-7d'\n    ELSE '>7d'\n  END AS \"Antigüedad\",\n  COUNT(*) AS \"Cantidad\"\nFROM tickets\nWHERE status = 'open'\nGROUP BY \"Antigüedad\"\nORDER BY CASE \n  WHEN \"Antigüedad\" = '<24h' THEN 1\n  WHEN \"Antigüedad\" = '1-3d' THEN 2\n  WHEN \"Antigüedad\" = '3-7d' THEN 3\n  ELSE 4\nEND",
+          "rawSql": "SELECT \n  CASE \n    WHEN now() - created_at < interval '24 hours' THEN '<24h'\n    WHEN now() - created_at < interval '3 days' THEN '1-3d'\n    WHEN now() - created_at < interval '7 days' THEN '3-7d'\n    ELSE '>7d'\n  END,\n  COUNT(*)\nFROM tickets\nWHERE status = 'open'\nGROUP BY \n  CASE \n    WHEN now() - created_at < interval '24 hours' THEN '<24h'\n    WHEN now() - created_at < interval '3 days' THEN '1-3d'\n    WHEN now() - created_at < interval '7 days' THEN '3-7d'\n    ELSE '>7d'\n  END\nORDER BY \n  CASE \n    WHEN CASE \n      WHEN now() - created_at < interval '24 hours' THEN '<24h'\n      WHEN now() - created_at < interval '3 days' THEN '1-3d'\n      WHEN now() - created_at < interval '7 days' THEN '3-7d'\n      ELSE '>7d'\n    END = '<24h' THEN 1\n    WHEN CASE \n      WHEN now() - created_at < interval '24 hours' THEN '<24h'\n      WHEN now() - created_at < interval '3 days' THEN '1-3d'\n      WHEN now() - created_at < interval '7 days' THEN '3-7d'\n      ELSE '>7d'\n    END = '1-3d' THEN 2\n    WHEN CASE \n      WHEN now() - created_at < interval '24 hours' THEN '<24h'\n      WHEN now() - created_at < interval '3 days' THEN '1-3d'\n      WHEN now() - created_at < interval '7 days' THEN '3-7d'\n      ELSE '>7d'\n    END = '3-7d' THEN 3\n    ELSE 4\n  END",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1225,13 +1230,13 @@
     "list": []
   },
   "time": {
-    "from": "now-7d",
-    "to": "now"
+    "from": "2025-02-23T14:01:22.200Z",
+    "to": "2025-03-04T03:20:45.699Z"
   },
   "timepicker": {},
   "timezone": "",
   "title": "SITIA panel",
   "uid": "ticket-system-dashboard",
-  "version": 15,
+  "version": 19,
   "weekStart": ""
 }
