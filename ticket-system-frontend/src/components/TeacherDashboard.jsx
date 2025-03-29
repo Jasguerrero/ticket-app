@@ -92,7 +92,8 @@ function TeacherDashboard({ user }) {
     'CRUD',
     'SOPORTE TECNICO',
     'SEGURIDAD',
-    'QUEJAS Y SUGERENCIAS'
+    'QUEJAS Y SUGERENCIAS',
+    'TRAMITES ESCOLARES'
   ];
 
   // Define subcategories based on selected category
@@ -100,7 +101,8 @@ function TeacherDashboard({ user }) {
     'CRUD': ['CREATE', 'UPDATE', 'DELETE'],
     'SOPORTE TECNICO': ['BRIGHTSPACE', 'MY ESPACIO', 'TEAMS', 'ALTISIA'],
     'SEGURIDAD': ['INFRAESTRUCTURA', 'CONDUCTA SOCIAL'],
-    'QUEJAS Y SUGERENCIAS': []
+    'QUEJAS Y SUGERENCIAS': [],
+    'TRAMITES ESCOLARES': ['KARDEX', 'TITULO', 'SERVICIO SOCIAL']
   };
 
   const showCreateTicket = () => {
