@@ -86,6 +86,20 @@ function TicketDetail({ ticketId, user, onBack }) {
       minute: '2-digit'
     }).format(date);
   };
+  
+  // Helper function to get priority badge color
+  const getPriorityBadgeColor = (priority) => {
+    switch (priority) {
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   if (loading) {
     return (
@@ -135,13 +149,18 @@ function TicketDetail({ ticketId, user, onBack }) {
           </button>
           <div>
             <h3 className="text-lg font-medium text-gray-900">Ticket #{ticket.id}</h3>
-            <span className={`mt-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-              ticket.status === 'open' 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-gray-100 text-gray-800'
-            }`}>
-              {ticket.status}
-            </span>
+            <div className="mt-1 flex space-x-2">
+              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                ticket.status === 'open' 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {ticket.status}
+              </span>
+              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(ticket.priority)}`}>
+                {ticket.priority || 'Not set'}
+              </span>
+            </div>
           </div>
         </div>
         
@@ -159,12 +178,15 @@ function TicketDetail({ ticketId, user, onBack }) {
       <div className="px-4 py-4 sm:px-6 border-b border-gray-200">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm font-medium text-gray-500">Category</p>
-            <p className="mt-1 text-sm text-gray-900">{ticket.category}</p>
+            <p className="text-sm font-medium text-gray-500">Reported By</p>
+            <p className="mt-1 text-sm text-gray-900">{ticket.user_name}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-500">Sub Category</p>
-            <p className="mt-1 text-sm text-gray-900">{ticket.sub_category || 'N/A'}</p>
+            <p className="text-sm font-medium text-gray-500">Category</p>
+            <div className="mt-1">
+              <p className="text-sm text-gray-900">{ticket.category}</p>
+              {ticket.sub_category && <p className="text-xs text-gray-500">{ticket.sub_category}</p>}
+            </div>
           </div>
           <div className="col-span-2">
             <p className="text-sm font-medium text-gray-500">Description</p>

@@ -32,7 +32,11 @@ def create_ticket():
 def get_tickets():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets;")
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id;
+    """)
     tickets = cur.fetchall()
     cur.close()
     conn.close()
@@ -43,7 +47,13 @@ def get_all_open_tickets():
     """Get all open tickets in the system for superuser dashboard"""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE status = 'open' ORDER BY created_at DESC;")
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.status = 'open' 
+        ORDER BY t.created_at DESC;
+    """)
     tickets = cur.fetchall()
     cur.close()
     conn.close()
@@ -54,7 +64,13 @@ def get_all_closed_tickets():
     """Get all closed tickets in the system for superuser dashboard"""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE status = 'closed' ORDER BY closed_at DESC;")
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.status = 'closed' 
+        ORDER BY t.closed_at DESC;
+    """)
     tickets = cur.fetchall()
     cur.close()
     conn.close()
@@ -64,7 +80,12 @@ def get_all_closed_tickets():
 def get_ticket(id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE id = %s;", (id,))
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.id = %s;
+    """, (id,))
     ticket = cur.fetchone()
     cur.close()
     conn.close()
@@ -92,6 +113,26 @@ def update_ticket(id):
         return jsonify(ticket)
     return jsonify({"error": "Ticket not found"}), 404
 
+@tickets_bp.route("/tickets-priority/<id>", methods=["PUT"])
+def update_ticket_priority(id):
+    data = request.get_json()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE tickets SET priority = %s, updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s RETURNING *;
+        """,
+        (data['priority'], id)
+    )
+    ticket = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if ticket:
+        return jsonify(ticket)
+    return jsonify({"error": "Ticket not found"}), 404
+
 @tickets_bp.route("/tickets/<id>", methods=["DELETE"])
 def delete_ticket(id):
     conn = get_db_connection()
@@ -109,7 +150,12 @@ def delete_ticket(id):
 def tickets_assign_open(user_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE assign_id = %s AND status = 'open';", (user_id,))
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.assign_id = %s AND t.status = 'open';
+    """, (user_id,))
     tickets = cur.fetchall()
     cur.close()
     conn.close()
@@ -119,7 +165,12 @@ def tickets_assign_open(user_id):
 def tickets_assign_closed(user_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE assign_id = %s AND status = 'closed';", (user_id,))
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.assign_id = %s AND t.status = 'closed';
+    """, (user_id,))
     tickets = cur.fetchall()
     cur.close()
     conn.close()
@@ -129,20 +180,86 @@ def tickets_assign_closed(user_id):
 def assign_ticket(id):
     data = request.get_json()
     conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        UPDATE tickets SET assign_id = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *;
-        """,
-        (data['assign_id'], id)
-    )
-    ticket = cur.fetchone()
-    conn.commit()
-    cur.close()
-    conn.close()
-    if ticket:
+    cur = conn.cursor(cursor_factory=dict_cursor())
+    
+    try:
+        # Begin transaction
+        cur.execute("BEGIN;")
+        
+        # Get ticket data before update
+        cur.execute("SELECT * FROM tickets WHERE id = %s;", (id,))
+        original_ticket = cur.fetchone()
+        
+        if not original_ticket:
+            # Rollback if ticket not found
+            cur.execute("ROLLBACK;")
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Ticket not found"}), 404
+        
+        # Update the ticket with the new assignment
+        cur.execute(
+            """
+            UPDATE tickets SET assign_id = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *;
+            """,
+            (data['assign_id'], id)
+        )
+        ticket = cur.fetchone()
+        
+        # Get agent name
+        cur.execute("SELECT user_name FROM users WHERE id = %s;", (data['assign_id'],))
+        agent = cur.fetchone()
+        agent_name = agent['user_name'] if agent else "Support Agent"
+        
+        # Add automatic comment when ticket is assigned
+        automatic_comment = "Recibimos tu caso, y el mismo lo escalamos a Tier 1 para su debido análisis y solución.\nPronto se contactarán contigo para brindarte una solución."
+        
+        cur.execute(
+            """
+            INSERT INTO comments (ticket_id, user_id, content)
+            VALUES (%s, %s, %s)
+            RETURNING *;
+            """,
+            (id, data['assign_id'], automatic_comment)
+        )
+        comment = cur.fetchone()
+        
+        # Create notification for the ticket creator
+        notification_message = f"Tu ticket #{id} ha sido asignado a {agent_name}\n {automatic_comment}"
+        
+        # Create extra_info JSON
+        extra_info = json.dumps({
+            "ticket_id": id,
+            "category": ticket['category'],
+            "sub_category": ticket['sub_category'],
+            "assigned_to": agent_name,
+            "assigned_to_id": data['assign_id'],
+            "comment_id": comment['id'],
+            "comment_content": automatic_comment[:100] + ("..." if len(automatic_comment) > 100 else "")
+        })
+        
+        # Insert notification
+        cur.execute(
+            """
+            INSERT INTO notifications (message, user_id, status, type, extra_info)
+            VALUES (%s, %s, 'pending', 'assignment', %s);
+            """,
+            (notification_message, ticket['user_id'], extra_info)
+        )
+        
+        # Commit transaction if everything was successful
+        cur.execute("COMMIT;")
+        
         return jsonify(ticket)
-    return jsonify({"error": "Ticket not found"}), 404
+        
+    except Exception as e:
+        # Rollback in case of any error
+        cur.execute("ROLLBACK;")
+        return jsonify({"error": f"Failed to assign ticket: {str(e)}"}), 500
+        
+    finally:
+        cur.close()
+        conn.close()
 
 @tickets_bp.route("/close_ticket/<id>", methods=["PUT"])
 def close_ticket(id):
@@ -173,34 +290,16 @@ def close_ticket(id):
     category = ticket['category']
     sub_category = ticket['sub_category'] if ticket['sub_category'] else ""
     
-    # Get the last comment on the ticket (if any)
-    cur.execute(
-        """
-        SELECT c.*, u.user_name
-        FROM comments c
-        JOIN users u ON c.user_id = u.id
-        WHERE c.ticket_id = %s
-        ORDER BY c.created_at DESC
-        LIMIT 1;
-        """,
-        (id,)
-    )
-    last_comment = cur.fetchone()
-    
     # Create the notification message
-    if last_comment:
-        notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro.\n\n Ultimo comentario: \"{last_comment['content'][:100]}...\""
-        comment_author = last_comment['user_name']
-    else:
-        notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro."
-        comment_author = None
+    notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro."
+    comment_author = None
     
     # Create extra_info JSON
     extra_info = json.dumps({
         "ticket_id": id,
         "category": category,
         "sub_category": sub_category,
-        "last_comment": last_comment['content'] if last_comment else None,
+        "last_comment": None,
         "comment_author": comment_author
     })
     
@@ -223,7 +322,12 @@ def close_ticket(id):
 def tickets_user_open(user_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE user_id = %s AND status = 'open';", (user_id,))
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.user_id = %s AND t.status = 'open';
+    """, (user_id,))
     tickets = cur.fetchall()
     cur.close()
     conn.close()
@@ -233,7 +337,12 @@ def tickets_user_open(user_id):
 def tickets_user_closed(user_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE user_id = %s AND status = 'closed';", (user_id,))
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.user_id = %s AND t.status = 'closed';
+    """, (user_id,))
     tickets = cur.fetchall()
     cur.close()
     conn.close()
@@ -243,7 +352,12 @@ def tickets_user_closed(user_id):
 def tickets_not_assign_open():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
-    cur.execute("SELECT * FROM tickets WHERE assign_id IS NULL AND status = 'open';")
+    cur.execute("""
+        SELECT t.*, u.user_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.user_id = u.id
+        WHERE t.assign_id IS NULL AND t.status = 'open';
+    """)
     tickets = cur.fetchall()
     cur.close()
     conn.close()
