@@ -1,4 +1,18 @@
 function TicketList({ tickets, loading, tabType, onViewTicket, onCreateTicket }) {
+    // Helper function to get priority badge color
+    const getPriorityBadgeColor = (priority) => {
+      switch (priority) {
+        case 'low':
+          return 'bg-green-100 text-green-800';
+        case 'medium':
+          return 'bg-yellow-100 text-yellow-800';
+        case 'high':
+          return 'bg-red-100 text-red-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
+    };
+  
     if (loading) {
       return (
         <div className="flex justify-center items-center py-12">
@@ -40,10 +54,10 @@ function TicketList({ tickets, loading, tabType, onViewTicket, onCreateTicket })
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subcategoria</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Category</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Created</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Status</th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asignado</th>
               </tr>
             </thead>
@@ -55,20 +69,36 @@ function TicketList({ tickets, loading, tabType, onViewTicket, onCreateTicket })
                   onClick={() => onViewTicket(ticket.id)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{ticket.id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.category}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{ticket.sub_category || '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{ticket.description}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      ticket.status === 'open' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {ticket.status}
-                    </span>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex flex-col">
+                      <span>{ticket.category}</span>
+                      {ticket.sub_category && <span className="text-xs text-gray-400">{ticket.sub_category}</span>}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    {ticket.description.length > 50 
+                      ? `${ticket.description.substring(0, 50)}...` 
+                      : ticket.description}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-24">
+                    {new Date(ticket.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm w-24">
+                    <div className="flex flex-col space-y-1">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        ticket.status === 'open' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {ticket.status}
+                      </span>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(ticket.priority)}`}>
+                        {ticket.priority || 'Not set'}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {ticket.assign_id || (
+                    {ticket.assign_id ? ticket.assign_name : (
                       <span className="text-gray-400 italic">Sin asignar</span>
                     )}
                   </td>

@@ -43,6 +43,54 @@ export const fetchClosedTickets = async (userId) => {
   }
 };
 
+// Fetch ticket details
+export const fetchTicketDetails = async (ticketId) => {
+  try {
+    const response = await axios.get(`/tickets/${ticketId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching ticket details:', error);
+    throw error;
+  }
+};
+
+// Fetch ticket comments
+export const fetchTicketComments = async (ticketId) => {
+  try {
+    const response = await axios.get(`/tickets/${ticketId}/comments`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching ticket comments:', error);
+    throw error;
+  }
+};
+
+// Add comment to ticket
+export const addTicketComment = async (ticketId, userId, content) => {
+  try {
+    const response = await axios.post(`/tickets/${ticketId}/comments`, {
+      user_id: userId,
+      content: content,
+      created_at: new Date().toISOString()
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding ticket comment:', error);
+    throw error;
+  }
+};
+
+// Close ticket
+export const closeTicket = async (ticketId) => {
+  try {
+    const response = await axios.put(`/close_ticket/${ticketId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error closing ticket:', error);
+    throw error;
+  }
+};
+
 // Fetch groups for a user
 export const fetchUserGroups = async (userId) => {
   try {
@@ -80,7 +128,8 @@ export const createTicket = async (ticketData) => {
     const ticketWithId = {
       id: generateTicketId(),
       ...ticketData,
-      status: 'open'
+      status: 'open',
+      created_at: new Date().toISOString()
     };
     
     const response = await axios.post('/tickets', ticketWithId);

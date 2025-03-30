@@ -10,7 +10,15 @@ function SuperUserDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('all_open'); // Default to all open tickets
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [adminSelections, setAdminSelections] = useState({}); // Track admin selection per ticket
+  const [prioritySelections, setPrioritySelections] = useState({}); // Track priority selection per ticket
   
+  // Priority options with Spanish display names
+  const priorityOptions = [
+    { value: 'low', label: 'low' },
+    { value: 'medium', label: 'medium' },
+    { value: 'high', label: 'high' }
+  ];
+
   useEffect(() => {
     // Load all open tickets by default
     fetchAllOpenTickets();
@@ -21,7 +29,6 @@ function SuperUserDashboard({ user }) {
   const fetchAdminUsers = async () => {
     try {
       const response = await axios.get('/admin_users');
-      console.log(response.data);
       setAdminUsers(response.data);
     } catch (err) {
       setError('Failed to fetch admin users');
@@ -37,12 +44,15 @@ function SuperUserDashboard({ user }) {
       setTickets(response.data);
       setError('');
       
-      // Initialize admin selections with current assignments
-      const selections = {};
+      // Initialize admin and priority selections with current values
+      const adminSelects = {};
+      const prioritySelects = {};
       response.data.forEach(ticket => {
-        selections[ticket.id] = ticket.assign_id || '';
+        adminSelects[ticket.id] = ticket.assign_id || '';
+        prioritySelects[ticket.id] = ticket.priority || 'medium';
       });
-      setAdminSelections(selections);
+      setAdminSelections(adminSelects);
+      setPrioritySelections(prioritySelects);
     } catch (err) {
       setError('Failed to fetch all open tickets');
     } finally {
@@ -59,12 +69,15 @@ function SuperUserDashboard({ user }) {
       setTickets(response.data);
       setError('');
       
-      // Initialize admin selections with current assignments
-      const selections = {};
+      // Initialize admin and priority selections with current values
+      const adminSelects = {};
+      const prioritySelects = {};
       response.data.forEach(ticket => {
-        selections[ticket.id] = ticket.assign_id || '';
+        adminSelects[ticket.id] = ticket.assign_id || '';
+        prioritySelects[ticket.id] = ticket.priority || 'medium';
       });
-      setAdminSelections(selections);
+      setAdminSelections(adminSelects);
+      setPrioritySelections(prioritySelects);
     } catch (err) {
       setError('Failed to fetch all closed tickets');
     } finally {
@@ -81,12 +94,15 @@ function SuperUserDashboard({ user }) {
       setTickets(response.data);
       setError('');
       
-      // Initialize admin selections for unassigned tickets
-      const selections = {};
+      // Initialize admin and priority selections
+      const adminSelects = {};
+      const prioritySelects = {};
       response.data.forEach(ticket => {
-        selections[ticket.id] = '';
+        adminSelects[ticket.id] = '';
+        prioritySelects[ticket.id] = ticket.priority || 'medium';
       });
-      setAdminSelections(selections);
+      setAdminSelections(adminSelects);
+      setPrioritySelections(prioritySelects);
     } catch (err) {
       setError('Failed to fetch unassigned tickets');
     } finally {
@@ -101,6 +117,13 @@ function SuperUserDashboard({ user }) {
     }));
   };
 
+  const handlePriorityChange = (ticketId, priority) => {
+    setPrioritySelections(prev => ({
+      ...prev,
+      [ticketId]: priority
+    }));
+  };
+
   const handleAssignTicket = async (ticketId) => {
     const adminId = adminSelections[ticketId];
     if (!adminId) return;
@@ -109,13 +132,33 @@ function SuperUserDashboard({ user }) {
       await axios.put(`/assign_ticket/${ticketId}`, { assign_id: adminId });
       
       // Refresh the current tab
-      if (activeTab === 'all_open') {
-        fetchAllOpenTickets();
-      } else if (activeTab === 'unassigned') {
-        fetchUnassignedTickets();
-      }
+      refreshCurrentTab();
     } catch (err) {
       setError('Failed to assign ticket');
+    }
+  };
+
+  const handleUpdatePriority = async (ticketId) => {
+    const priority = prioritySelections[ticketId];
+    if (!priority) return;
+    
+    try {
+      await axios.put(`/tickets-priority/${ticketId}`, { priority });
+      
+      // Refresh the current tab
+      refreshCurrentTab();
+    } catch (err) {
+      setError('Failed to update ticket priority');
+    }
+  };
+
+  const refreshCurrentTab = () => {
+    if (activeTab === 'all_open') {
+      fetchAllOpenTickets();
+    } else if (activeTab === 'all_closed') {
+      fetchAllClosedTickets();
+    } else if (activeTab === 'unassigned') {
+      fetchUnassignedTickets();
     }
   };
 
@@ -126,20 +169,34 @@ function SuperUserDashboard({ user }) {
   const handleBackFromDetail = () => {
     setSelectedTicketId(null);
     // Refresh the current tab after returning from detail view
-    if (activeTab === 'all_open') {
-      fetchAllOpenTickets();
-    } else if (activeTab === 'all_closed') {
-      fetchAllClosedTickets();
-    } else if (activeTab === 'unassigned') {
-      fetchUnassignedTickets();
-    }
+    refreshCurrentTab();
   };
 
-  // Function to get admin name for display - FIXED to use user_name instead of name
+  // Function to get admin name for display
   const getAdminName = (adminId) => {
     if (!adminId) return 'Not Assigned';
     const admin = adminUsers.find(a => a.id === adminId);
     return admin ? admin.user_name : 'Unknown';
+  };
+
+  // Helper function to get priority badge color
+  const getPriorityBadgeColor = (priority) => {
+    switch (priority) {
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Helper function to get priority display label
+  const getPriorityLabel = (priority) => {
+    const option = priorityOptions.find(opt => opt.value === priority);
+    return option ? option.label : 'Not set';
   };
 
   // If a ticket is selected, show its details
@@ -243,13 +300,14 @@ function SuperUserDashboard({ user }) {
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sub Category</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Reported By</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Category</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned To</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Created</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Status</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Assigned To</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assign To</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -268,40 +326,50 @@ function SuperUserDashboard({ user }) {
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
                       onClick={() => handleViewTicketDetail(ticket.id)}
                     >
-                      {ticket.category}
+                      {ticket.user_name}
                     </td>
                     <td 
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
                       onClick={() => handleViewTicketDetail(ticket.id)}
                     >
-                      {ticket.sub_category || '-'}
+                      <div className="flex flex-col">
+                        <span>{ticket.category}</span>
+                        {ticket.sub_category && <span className="text-xs text-gray-400">{ticket.sub_category}</span>}
+                      </div>
                     </td>
                     <td 
                       className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate cursor-pointer"
                       onClick={() => handleViewTicketDetail(ticket.id)}
                     >
-                      {ticket.description}
+                      {ticket.description.length > 50 
+                        ? `${ticket.description.substring(0, 50)}...` 
+                        : ticket.description}
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-24 cursor-pointer"
                       onClick={() => handleViewTicketDetail(ticket.id)}
                     >
                       {new Date(ticket.created_at).toLocaleDateString()}
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap text-sm cursor-pointer"
+                      className="px-6 py-4 whitespace-nowrap text-sm w-24 cursor-pointer"
                       onClick={() => handleViewTicketDetail(ticket.id)}
                     >
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        ticket.status === 'open' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {ticket.status}
-                      </span>
+                      <div className="flex flex-col space-y-1">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          ticket.status === 'open' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {ticket.status}
+                        </span>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(ticket.priority)}`}>
+                          {getPriorityLabel(ticket.priority)}
+                        </span>
+                      </div>
                     </td>
                     <td 
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer w-28"
                       onClick={() => handleViewTicketDetail(ticket.id)}
                     >
                       {getAdminName(ticket.assign_id)}
@@ -312,6 +380,7 @@ function SuperUserDashboard({ user }) {
                           value={adminSelections[ticket.id] || ''}
                           onChange={(e) => handleAdminChange(ticket.id, e.target.value)}
                           className="mr-2 rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                          disabled={ticket.status !== 'open'}
                         >
                           <option value="">Select Admin</option>
                           {adminUsers.map(admin => (
@@ -320,10 +389,34 @@ function SuperUserDashboard({ user }) {
                         </select>
                         <button
                           onClick={() => handleAssignTicket(ticket.id)}
-                          disabled={!adminSelections[ticket.id]}
+                          disabled={!adminSelections[ticket.id] || ticket.status !== 'open'}
                           className="text-blue-600 hover:text-blue-900 disabled:text-gray-400"
                         >
                           Assign
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={prioritySelections[ticket.id] || 'medium'}
+                          onChange={(e) => handlePriorityChange(ticket.id, e.target.value)}
+                          className="mr-2 rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                          disabled={ticket.status !== 'open'}
+                        >
+                          {priorityOptions.map(option => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleUpdatePriority(ticket.id)}
+                          disabled={
+                            prioritySelections[ticket.id] === ticket.priority || 
+                            ticket.status !== 'open'
+                          }
+                          className="text-blue-600 hover:text-blue-900 disabled:text-gray-400"
+                        >
+                          Update
                         </button>
                       </div>
                     </td>
