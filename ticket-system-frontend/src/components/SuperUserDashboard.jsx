@@ -302,7 +302,6 @@ function SuperUserDashboard({ user }) {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Reported By</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Category</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Created</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Status</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">Assigned To</th>
@@ -336,14 +335,6 @@ function SuperUserDashboard({ user }) {
                         <span>{ticket.category}</span>
                         {ticket.sub_category && <span className="text-xs text-gray-400">{ticket.sub_category}</span>}
                       </div>
-                    </td>
-                    <td 
-                      className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate cursor-pointer"
-                      onClick={() => handleViewTicketDetail(ticket.id)}
-                    >
-                      {ticket.description.length > 50 
-                        ? `${ticket.description.substring(0, 50)}...` 
-                        : ticket.description}
                     </td>
                     <td 
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 w-24 cursor-pointer"
