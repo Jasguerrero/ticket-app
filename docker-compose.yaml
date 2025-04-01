@@ -83,6 +83,17 @@ services:
     networks:
       - ticket-app_postgres_network
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090"
+    networks:
+      - ticket-app_postgres_network
+
 volumes:
   postgres_data:
   grafana_data:
