@@ -9,3 +9,5 @@ __pycache__/
 *.pyo
 *.pyd
 ticket-system-frontend/ecosystem.config.cjs
+auth_info/
+node_modules/

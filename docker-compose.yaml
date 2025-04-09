@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   streamlit-app:
     build:
@@ -94,9 +92,57 @@ services:
     networks:
       - ticket-app_postgres_network
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "localhost", "-p", "6379", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticket-app_postgres_network
+  
+  redis-commander:
+    image: ghcr.io/joeferner/redis-commander:latest
+    container_name: redis-commander
+    ports:
+      - "8316:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD}
+      - HTTP_USER=${REDIS_UI_USERNAME}
+      - HTTP_PASSWORD=${REDIS_UI_PASSWORD}
+      - HTTP_AUTH_ENABLED=true
+    restart: unless-stopped
+    depends_on:
+      - redis
+    networks:
+      - ticket-app_postgres_network
+
+  wa-bot:
+    container_name: wa-bot
+    build:
+      dockerfile: wa-bot/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./wa-bot/auth_info:/usr/server/wa-bot/auth_info
+    depends_on:
+      - redis
+      - api
+    networks:
+      - ticket-app_postgres_network 
+
 volumes:
   postgres_data:
   grafana_data:
+  redis_data:
+    name: whatsapp_bot_redis_data
 
 networks:
   ticket-app_postgres_network:
