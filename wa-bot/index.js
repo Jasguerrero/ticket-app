@@ -4,6 +4,7 @@ const qrcode = require('qrcode-terminal');
 const { handleTibiaResponse } = require('./tibia/responses');
 const { sendPeriodicMessage } = require('./utils/util');
 const { notificationsTask } = require('./utils/notifications');
+const { startNotificationConsumer } = require('./utils/consumer');
 const redis = require('redis');
 
 // Kike bot responses
@@ -40,9 +41,10 @@ const redisClient = redis.createClient({
 // Store references to intervals so we can clear them on reconnection
 let periodicMessageInterval = null;
 let notificationsInterval = null;
+let rabbitMQConsumer = null;
 
 // Function to clear existing intervals
-const clearIntervals = () => {
+const clearIntervals = async () => {
   if (periodicMessageInterval) {
     clearInterval(periodicMessageInterval);
     periodicMessageInterval = null;
@@ -52,12 +54,26 @@ const clearIntervals = () => {
     clearInterval(notificationsInterval);
     notificationsInterval = null;
   }
+
+  if (rabbitMQConsumer) {
+    try {
+      if (rabbitMQConsumer.channel) {
+        await rabbitMQConsumer.channel.close();
+      }
+      if (rabbitMQConsumer.connection) {
+        await rabbitMQConsumer.connection.close();
+      }
+    } catch (err) {
+      console.error('Error closing RabbitMQ connections:', err);
+    }
+    rabbitMQConsumer = null;
+  }
 };
 
 // Function to set up the scheduled tasks
-const setupScheduledTasks = (sock) => {
+const setupScheduledTasks = async (sock) => {
   // Clear any existing intervals first
-  clearIntervals();
+  await clearIntervals();
   
   // Set up new intervals
   periodicMessageInterval = setInterval(
@@ -69,6 +85,10 @@ const setupScheduledTasks = (sock) => {
     () => notificationsTask(sock, ticketsNotificationsURL), 
     10 * 1000
   ); // Every 10 seconds
+
+  // Start the RabbitMQ consumer
+  console.log('Initializing RabbitMQ notification consumer...');
+  rabbitMQConsumer = await startNotificationConsumer(sock);
   
   console.log('Scheduled tasks initialized');
 };
@@ -121,7 +141,9 @@ const startBot = async () => {
         retryCount = 0; // Reset retry count on successful connection
         
         // Set up the scheduled tasks after successful connection
-        setupScheduledTasks(sock);
+        setupScheduledTasks(sock).catch(err => {
+          console.error('Error setting up scheduled tasks:', err);
+        });
       }
     });
 
