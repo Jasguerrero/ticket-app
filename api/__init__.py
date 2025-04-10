@@ -1,14 +1,22 @@
 from flask import Flask
 from flask_cors import CORS
 import logging
+from dotenv import load_dotenv
+
+# Import the RabbitMQ extension
+from api.services.rabbitmq import rabbitmq
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 def create_app():
+    load_dotenv()
     """Initialize the Flask application."""
     app = Flask(__name__)
     CORS(app)
+    
+    # Register RabbitMQ extension
+    rabbitmq.init_app(app)
     
     # Register blueprints
     from api.routes.tickets import tickets_bp

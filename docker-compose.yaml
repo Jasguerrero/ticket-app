@@ -27,6 +27,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: always
     networks:
       - ticket-app_postgres_network 
@@ -136,13 +138,39 @@ services:
       - redis
       - api
     networks:
-      - ticket-app_postgres_network 
+      - ticket-app_postgres_network
+
+  # New RabbitMQ service
+  rabbitmq:
+    build:
+      dockerfile: rabbitmq/Dockerfile
+    container_name: rabbitmq
+    hostname: rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_logs:/var/log/rabbitmq
+    ports:
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI
+    environment:
+      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-adminpassword}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - ticket-app_postgres_network
 
 volumes:
   postgres_data:
   grafana_data:
   redis_data:
     name: whatsapp_bot_redis_data
+  rabbitmq_data:
+  rabbitmq_logs:
 
 networks:
   ticket-app_postgres_network:

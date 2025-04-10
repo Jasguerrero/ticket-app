@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
-import json
+import logging
 from api.database import get_db_connection, dict_cursor
+from api.services.rabbitmq import rabbitmq
 
+logger = logging.getLogger(__name__)
 # Create blueprint
 announcements_bp = Blueprint('announcements', __name__)
 
@@ -12,80 +14,103 @@ def create_announcement(group_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
     
-    # Check if the group exists
-    cur.execute("SELECT * FROM groups WHERE id = %s;", (group_id,))
-    group = cur.fetchone()
-    
-    if not group:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Group not found"}), 404
-    
-    # Check if the user is authorized (must be the teacher who owns the group or an admin)
-    cur.execute("SELECT * FROM users WHERE id = %s;", (data['teacher_id'],))
-    teacher = cur.fetchone()
-    
-    if not teacher:
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Teacher not found"}), 404
-    
-    if teacher['user_role'] != 'admin' and (teacher['user_role'] != 'teacher' or teacher['id'] != group['teacher_id']):
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Only the teacher who owns the group or an admin can create announcements"}), 403
-    
-    # Create the announcement
-    cur.execute(
-        """
-        INSERT INTO announcements (group_id, teacher_id, title, content, is_pinned)
-        VALUES (%s, %s, %s, %s, %s) RETURNING *;
-        """,
-        (group_id, data['teacher_id'], data['title'], data['content'], data.get('is_pinned', False))
-    )
-    
-    announcement = cur.fetchone()
-    
-    # Get all users in the group to create notifications for them
-    cur.execute(
-        """
-        SELECT user_id 
-        FROM user_groups 
-        WHERE group_id = %s;
-        """,
-        (group_id,)
-    )
-    
-    group_members = cur.fetchall()
-    
-    # Create a notification message
-    notification_message = f"Nuevo anuncio en {group['name']}:\n\n{data['title']}\n {data['content'][:100]}..."
-    
-    # Create the JSON extra_info as a string
-    extra_info = json.dumps({
-        "group": group_id,
-        "title": data['title']
-    })
-    
-    # Create notifications for each group member
-    for member in group_members:
+    try:
+        # Check if the group exists
+        cur.execute("SELECT * FROM groups WHERE id = %s;", (group_id,))
+        group = cur.fetchone()
+        
+        if not group:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Group not found"}), 404
+        
+        # Check if the user is authorized (must be the teacher who owns the group or an admin)
+        cur.execute("SELECT * FROM users WHERE id = %s;", (data['teacher_id'],))
+        teacher = cur.fetchone()
+        
+        if not teacher:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Teacher not found"}), 404
+        
+        if teacher['user_role'] != 'admin' and (teacher['user_role'] != 'teacher' or teacher['id'] != group['teacher_id']):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Only the teacher who owns the group or an admin can create announcements"}), 403
+        
+        # Create the announcement
         cur.execute(
             """
-            INSERT INTO notifications (message, user_id, status, type, extra_info)
-            VALUES (%s, %s, 'pending', 'group', %s);
+            INSERT INTO announcements (group_id, teacher_id, title, content, is_pinned)
+            VALUES (%s, %s, %s, %s, %s) RETURNING *;
             """,
-            (notification_message, member['user_id'], extra_info)
+            (group_id, data['teacher_id'], data['title'], data['content'], data.get('is_pinned', False))
         )
-    
-    conn.commit()
-    
-    # Add teacher name to the response
-    announcement['teacher_name'] = teacher['user_name']
-    
-    cur.close()
-    conn.close()
-    
-    return jsonify(announcement), 201
+        
+        announcement = cur.fetchone()
+        
+        # Get all users in the group with their phone numbers
+        cur.execute(
+            """
+            SELECT ug.user_id, u.phone, u.user_name 
+            FROM user_groups ug
+            LEFT JOIN users u ON ug.user_id = u.id
+            WHERE ug.group_id = %s;
+            """,
+            (group_id,)
+        )
+        
+        group_members = cur.fetchall()
+        
+        # Create a notification message
+        notification_message = f"Nuevo anuncio en {group['name']}:\n\n{data['title']}\n {data['content'][:100]}..."
+        
+        # Create the extra_info as a dict
+        extra_info = {
+            "group": group_id,
+            "title": data['title'],
+            "announcement_id": announcement['id']
+        }
+        
+        # Send notifications through RabbitMQ
+        notification_failures = []
+        for member in group_members:
+            success = rabbitmq.publish_notification(
+                user_id=member['user_id'],
+                message=notification_message,
+                notification_type='group',
+                extra_info={
+                    **extra_info,
+                    "phone": member['phone'],
+                    "user_name": member['user_name']
+                }
+            )
+            if not success:
+                notification_failures.append(member['user_id'])
+        
+        conn.commit()
+        
+        # Add teacher name to the response
+        announcement['teacher_name'] = teacher['user_name']
+        
+        # Add notification status to the response
+        if not notification_failures:
+            announcement['notification_status'] = 'queued'
+        else:
+            announcement['notification_status'] = 'partial'
+            announcement['failed_notifications'] = notification_failures
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(announcement), 201
+        
+    except Exception as e:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        logger.error(f"Error creating announcement: {str(e)}", exc_info=True)
+        return jsonify({"error": "An error occurred while creating the announcement"}), 500
 
 @announcements_bp.route("/groups/<group_id>/announcements", methods=["GET"])
 def get_group_announcements(group_id):

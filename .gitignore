@@ -11,3 +11,5 @@ __pycache__/
 ticket-system-frontend/ecosystem.config.cjs
 auth_info/
 node_modules/
+# RabbitMQ generated config
+rabbitmq-definitions.json
