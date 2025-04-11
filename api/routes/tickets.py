@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 import logging
-import json
 from api.database import get_db_connection, dict_cursor
+from api.services.rabbitmq import rabbitmq
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -224,28 +224,39 @@ def assign_ticket(id):
         )
         comment = cur.fetchone()
         
+        # Get user details for notification
+        cur.execute("SELECT id, phone, user_name FROM users WHERE id = %s;", (ticket['user_id'],))
+        user = cur.fetchone()
+        
         # Create notification for the ticket creator
         notification_message = f"Tu ticket #{id} ha sido asignado a {agent_name}\n {automatic_comment}"
         
-        # Create extra_info JSON
-        extra_info = json.dumps({
+        # Create extra_info for RabbitMQ
+        extra_info = {
             "ticket_id": id,
             "category": ticket['category'],
             "sub_category": ticket['sub_category'],
             "assigned_to": agent_name,
             "assigned_to_id": data['assign_id'],
             "comment_id": comment['id'],
-            "comment_content": automatic_comment[:100] + ("..." if len(automatic_comment) > 100 else "")
-        })
+            "comment_content": automatic_comment[:100] + ("..." if len(automatic_comment) > 100 else ""),
+            "phone": user['phone'],
+            "user_name": user['user_name']
+        }
         
-        # Insert notification
-        cur.execute(
-            """
-            INSERT INTO notifications (message, user_id, status, type, extra_info)
-            VALUES (%s, %s, 'pending', 'assignment', %s);
-            """,
-            (notification_message, ticket['user_id'], extra_info)
+        # Send notification via RabbitMQ
+        notification_success = rabbitmq.publish_notification(
+            user_id=ticket['user_id'],
+            message=notification_message,
+            notification_type='assignment',
+            extra_info=extra_info
         )
+        
+        # Add notification status to the response
+        if notification_success:
+            ticket['notification_status'] = 'queued'
+        else:
+            ticket['notification_status'] = 'failed'
         
         # Commit transaction if everything was successful
         cur.execute("COMMIT;")
@@ -255,6 +266,7 @@ def assign_ticket(id):
     except Exception as e:
         # Rollback in case of any error
         cur.execute("ROLLBACK;")
+        logger.error(f"Error assigning ticket: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to assign ticket: {str(e)}"}), 500
         
     finally:
@@ -266,57 +278,76 @@ def close_ticket(id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=dict_cursor())
     
-    # Update ticket status to closed
-    cur.execute(
-        """
-        UPDATE tickets 
-        SET status = 'closed', closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
-        WHERE id = %s 
-        RETURNING *;
-        """,
-        (id,)
-    )
-    ticket = cur.fetchone()
-    
-    if not ticket:
+    try:
+        # Begin transaction
+        cur.execute("BEGIN;")
+        
+        # Update ticket status to closed
+        cur.execute(
+            """
+            UPDATE tickets 
+            SET status = 'closed', closed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = %s 
+            RETURNING *;
+            """,
+            (id,)
+        )
+        ticket = cur.fetchone()
+        
+        if not ticket:
+            cur.execute("ROLLBACK;")
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Ticket not found"}), 404
+        
+        # Get the ticket creator's details
+        cur.execute("SELECT id, phone, user_name FROM users WHERE id = %s;", (ticket['user_id'],))
+        user = cur.fetchone()
+        
+        # Get the category and subcategory for the notification message
+        category = ticket['category']
+        sub_category = ticket['sub_category'] if ticket['sub_category'] else ""
+        
+        # Create the notification message
+        notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro."
+        
+        # Create extra_info for RabbitMQ
+        extra_info = {
+            "ticket_id": id,
+            "category": category,
+            "sub_category": sub_category,
+            "last_comment": None,
+            "comment_author": None,
+            "phone": user['phone'],
+            "user_name": user['user_name']
+        }
+        
+        # Send notification via RabbitMQ
+        notification_success = rabbitmq.publish_notification(
+            user_id=ticket['user_id'],
+            message=notification_message,
+            notification_type='ticket',
+            extra_info=extra_info
+        )
+        
+        # Add notification status to the response
+        if notification_success:
+            ticket['notification_status'] = 'queued'
+        else:
+            ticket['notification_status'] = 'failed'
+        
+        cur.execute("COMMIT;")
+        
+        return jsonify(ticket)
+        
+    except Exception as e:
+        cur.execute("ROLLBACK;")
+        logger.error(f"Error closing ticket: {str(e)}", exc_info=True)
+        return jsonify({"error": f"Failed to close ticket: {str(e)}"}), 500
+        
+    finally:
         cur.close()
         conn.close()
-        return jsonify({"error": "Ticket not found"}), 404
-    
-    # Get the ticket creator's ID (this will be the notification recipient)
-    ticket_creator_id = ticket['user_id']
-    
-    # Get the category and subcategory for the notification message
-    category = ticket['category']
-    sub_category = ticket['sub_category'] if ticket['sub_category'] else ""
-    
-    # Create the notification message
-    notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro."
-    comment_author = None
-    
-    # Create extra_info JSON
-    extra_info = json.dumps({
-        "ticket_id": id,
-        "category": category,
-        "sub_category": sub_category,
-        "last_comment": None,
-        "comment_author": comment_author
-    })
-    
-    # Create notification for the ticket creator
-    cur.execute(
-        """
-        INSERT INTO notifications (message, user_id, status, type, extra_info)
-        VALUES (%s, %s, 'pending', 'ticket', %s);
-        """,
-        (notification_message, ticket_creator_id, extra_info)
-    )
-    
-    conn.commit()
-    cur.close()
-    conn.close()
-    
-    return jsonify(ticket)
 
 @tickets_bp.route("/tickets_user_open/<user_id>", methods=["GET"])
 def tickets_user_open(user_id):
