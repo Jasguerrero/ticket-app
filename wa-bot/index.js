@@ -1,9 +1,9 @@
-require('dotenv').config({ path: './.env' });
+require('dotenv').config({ path: './wa-bot/.env' });
+const { MongoClient } = require('mongodb');
 const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { handleTibiaResponse } = require('./tibia/responses');
 const { sendPeriodicMessage } = require('./utils/util');
-const { notificationsTask } = require('./utils/notifications');
 const { startNotificationConsumer } = require('./utils/consumer');
 const redis = require('redis');
 
@@ -24,7 +24,6 @@ let retryCount = 0;
 const environment = process.env.ENVIRONMENT;
 const tibiaGroupIDs = process.env.TIBIA_GROUPS;
 const tibiaGroupSet = new Set(tibiaGroupIDs.split(','));
-const ticketsNotificationsURL = process.env.TICKETS_NOTIFICATIONS_URL;
 
 // Redis configuration
 const redisClient = redis.createClient({
@@ -38,9 +37,24 @@ const redisClient = redis.createClient({
   console.log('Connected to Redis successfully');
 })();
 
+const mongoUri = `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}`;
+let mongoClient = null;
+
+const connectToMongo = async () => {
+  try {
+    mongoClient = new MongoClient(mongoUri);
+    await mongoClient.connect();
+    console.log('Connected to MongoDB successfully');
+    return mongoClient;
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    // Try to continue even if MongoDB fails - critical path should work
+    return null;
+  }
+};
+
 // Store references to intervals so we can clear them on reconnection
 let periodicMessageInterval = null;
-let notificationsInterval = null;
 let rabbitMQConsumer = null;
 
 // Function to clear existing intervals
@@ -48,11 +62,6 @@ const clearIntervals = async () => {
   if (periodicMessageInterval) {
     clearInterval(periodicMessageInterval);
     periodicMessageInterval = null;
-  }
-  
-  if (notificationsInterval) {
-    clearInterval(notificationsInterval);
-    notificationsInterval = null;
   }
 
   if (rabbitMQConsumer) {
@@ -80,15 +89,10 @@ const setupScheduledTasks = async (sock) => {
     () => sendPeriodicMessage(sock, tibiaGroupSet, redisClient), 
     5 * 30 * 1000
   ); // Every 5 minutes
-  
-  notificationsInterval = setInterval(
-    () => notificationsTask(sock, ticketsNotificationsURL), 
-    10 * 1000
-  ); // Every 10 seconds
 
   // Start the RabbitMQ consumer
   console.log('Initializing RabbitMQ notification consumer...');
-  rabbitMQConsumer = await startNotificationConsumer(sock);
+  rabbitMQConsumer = await startNotificationConsumer(sock, mongoClient);
   
   console.log('Scheduled tasks initialized');
 };
@@ -98,6 +102,7 @@ const startBot = async () => {
   console.log('Initializing WhatsApp bot...');
 
   try {
+    await connectToMongo();
     const { state, saveCreds } = await useMultiFileAuthState('./wa-bot/auth_info');
     const store = makeInMemoryStore({});
     const sock = makeWASocket({ auth: state, printQRInTerminal: true });
@@ -211,11 +216,15 @@ const startBot = async () => {
 
 // Handle process termination
 process.on('SIGINT', async () => {
-  clearIntervals();
+  await clearIntervals();
   console.log('Bot shutting down...');
   if (redisClient.isOpen) {
     await redisClient.quit();
     console.log('Redis connection closed');
+  }
+  if (mongoClient) {
+    await mongoClient.close();
+    console.log('MongoDB connection closed');
   }
   process.exit(0);
 });

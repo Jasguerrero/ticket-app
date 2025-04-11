@@ -12,8 +12,8 @@ def hash_password(password):
 
 def generate_config():
     # Get environment variables or use defaults
-    rabbitmq_user = os.environ.get('RABBITMQ_USER', 'admin')
-    rabbitmq_password = os.environ.get('RABBITMQ_PASSWORD', 'adminpassword')
+    rabbitmq_user = os.environ.get('RABBITMQ_USER')
+    rabbitmq_password = os.environ.get('RABBITMQ_PASSWORD')
     
     # Generate password hash
     password_hash = hash_password(rabbitmq_password)

@@ -10,7 +10,7 @@ from api.services.rabbitmq import rabbitmq
 logger = logging.getLogger(__name__)
 
 def create_app():
-    load_dotenv()
+    load_dotenv(dotenv_path='./api/.env', override=True)
     """Initialize the Flask application."""
     app = Flask(__name__)
     CORS(app)

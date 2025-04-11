@@ -137,6 +137,8 @@ services:
     depends_on:
       - redis
       - api
+      - mongodb
+      - rabbitmq
     networks:
       - ticket-app_postgres_network
 
@@ -153,8 +155,8 @@ services:
       - "5672:5672"    # AMQP protocol
       - "15672:15672"  # Management UI
     environment:
-      - RABBITMQ_USER=${RABBITMQ_USER:-admin}
-      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-adminpassword}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
@@ -164,6 +166,27 @@ services:
     networks:
       - ticket-app_postgres_network
 
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "27089:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb-init.js:/docker-entrypoint-initdb.d/mongodb-init.js:ro
+    networks:
+      - ticket-app_postgres_network
+    healthcheck:
+      test: ["CMD", "mongosh", "admin", "--quiet", "--eval", "db.adminCommand('ping').ok", "--username", "${MONGO_USER}", "--password", "${MONGO_PASSWORD}", "--authenticationDatabase", "admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
 volumes:
   postgres_data:
   grafana_data:
@@ -171,6 +194,7 @@ volumes:
     name: whatsapp_bot_redis_data
   rabbitmq_data:
   rabbitmq_logs:
+  mongodb_data:
 
 networks:
   ticket-app_postgres_network:
