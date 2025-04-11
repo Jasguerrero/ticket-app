@@ -1,6 +1,10 @@
 from flask import Blueprint, request, jsonify
-import json
+import logging
 from api.database import get_db_connection, dict_cursor
+from api.services.rabbitmq import rabbitmq  # Import the rabbitmq service
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 comments_bp = Blueprint('comments', __name__)
@@ -76,6 +80,7 @@ def create_comment(id):
         )
         
         new_comment = cur.fetchone()
+        notification_status = None
         
         # Determine notification recipient
         notification_recipient_id = None
@@ -85,29 +90,45 @@ def create_comment(id):
             notification_recipient_id = ticket['user_id']
             notification_message = f"Nuevo comentario en tu ticket #{id}: {user['user_name']} \n{data['content']}"
         
-        # Only create notification if we have a recipient
-        if notification_recipient_id:
-            # Create extra_info JSON with relevant data
-            extra_info = json.dumps({
-                "ticket_id": id,
-                "category": ticket['category'],
-                "sub_category": ticket['sub_category'],
-                "comment_id": new_comment['id'],
-                "comment_content": data['content'][:100] + ("..." if len(data['content']) > 100 else ""),
-                "comment_author": user['user_name']
-            })
-            
-            # Insert notification
-            cur.execute(
-                """
-                INSERT INTO notifications (message, user_id, status, type, extra_info)
-                VALUES (%s, %s, 'pending', 'comment', %s);
-                """, 
-                (notification_message, notification_recipient_id, extra_info)
-            )
+            # Only send notification if we have a recipient
+            if notification_recipient_id:
+                # Get recipient user details
+                cur.execute("SELECT phone, user_name FROM users WHERE id = %s;", (notification_recipient_id,))
+                recipient = cur.fetchone()
+                
+                if recipient:
+                    # Create extra_info with relevant data
+                    extra_info = {
+                        "ticket_id": id,
+                        "category": ticket['category'],
+                        "sub_category": ticket['sub_category'],
+                        "comment_id": new_comment['id'],
+                        "comment_content": data['content'][:100] + ("..." if len(data['content']) > 100 else ""),
+                        "comment_author": user['user_name'],
+                        "phone": recipient['phone'],
+                        "user_name": recipient['user_name']
+                    }
+                    
+                    # Send notification via RabbitMQ
+                    notification_success = rabbitmq.publish_notification(
+                        user_id=notification_recipient_id,
+                        message=notification_message,
+                        notification_type='comment',
+                        extra_info=extra_info
+                    )
+                    
+                    # Track notification status
+                    if notification_success:
+                        notification_status = 'queued'
+                    else:
+                        notification_status = 'failed'
         
         # Add the username to the response
         new_comment['user_name'] = user['user_name']
+        
+        # Add notification status to the response if applicable
+        if notification_status:
+            new_comment['notification_status'] = notification_status
         
         # Commit the transaction
         cur.execute("COMMIT;")
@@ -117,6 +138,7 @@ def create_comment(id):
     except Exception as e:
         # Rollback in case of error
         cur.execute("ROLLBACK;")
+        logger.error(f"Error creating comment: {str(e)}", exc_info=True)
         return jsonify({"error": f"Failed to create comment: {str(e)}"}), 500
         
     finally:
