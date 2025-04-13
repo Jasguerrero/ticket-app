@@ -81,7 +81,7 @@ class RabbitMQ:
             self.connection.close()
             self.connected = False
             
-    def publish_notification(self, user_id, message, notification_type, extra_info):
+    def publish_notification(self, user_id, message, notification_type, phone):
         """Publish a notification message to RabbitMQ"""
         from flask import current_app
         
@@ -102,7 +102,7 @@ class RabbitMQ:
                 'message': message,
                 'user_id': user_id,
                 'type': notification_type,
-                'extra_info': extra_info,
+                'phone': phone,
                 'created_at': datetime.now().isoformat()
             }
             

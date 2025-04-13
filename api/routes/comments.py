@@ -97,24 +97,12 @@ def create_comment(id):
                 recipient = cur.fetchone()
                 
                 if recipient:
-                    # Create extra_info with relevant data
-                    extra_info = {
-                        "ticket_id": id,
-                        "category": ticket['category'],
-                        "sub_category": ticket['sub_category'],
-                        "comment_id": new_comment['id'],
-                        "comment_content": data['content'][:100] + ("..." if len(data['content']) > 100 else ""),
-                        "comment_author": user['user_name'],
-                        "phone": recipient['phone'],
-                        "user_name": recipient['user_name']
-                    }
-                    
                     # Send notification via RabbitMQ
                     notification_success = rabbitmq.publish_notification(
                         user_id=notification_recipient_id,
                         message=notification_message,
                         notification_type='comment',
-                        extra_info=extra_info
+                        phone=recipient['phone']
                     )
                     
                     # Track notification status

@@ -65,13 +65,6 @@ def create_announcement(group_id):
         # Create a notification message
         notification_message = f"Nuevo anuncio en {group['name']}:\n\n{data['title']}\n {data['content'][:100]}..."
         
-        # Create the extra_info as a dict
-        extra_info = {
-            "group": group_id,
-            "title": data['title'],
-            "announcement_id": announcement['id']
-        }
-        
         # Send notifications through RabbitMQ
         notification_failures = []
         for member in group_members:
@@ -79,11 +72,7 @@ def create_announcement(group_id):
                 user_id=member['user_id'],
                 message=notification_message,
                 notification_type='group',
-                extra_info={
-                    **extra_info,
-                    "phone": member['phone'],
-                    "user_name": member['user_name']
-                }
+                phone=member['phone']
             )
             if not success:
                 notification_failures.append(member['user_id'])

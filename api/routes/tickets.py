@@ -231,25 +231,12 @@ def assign_ticket(id):
         # Create notification for the ticket creator
         notification_message = f"Tu ticket #{id} ha sido asignado a {agent_name}\n {automatic_comment}"
         
-        # Create extra_info for RabbitMQ
-        extra_info = {
-            "ticket_id": id,
-            "category": ticket['category'],
-            "sub_category": ticket['sub_category'],
-            "assigned_to": agent_name,
-            "assigned_to_id": data['assign_id'],
-            "comment_id": comment['id'],
-            "comment_content": automatic_comment[:100] + ("..." if len(automatic_comment) > 100 else ""),
-            "phone": user['phone'],
-            "user_name": user['user_name']
-        }
-        
         # Send notification via RabbitMQ
         notification_success = rabbitmq.publish_notification(
             user_id=ticket['user_id'],
             message=notification_message,
             notification_type='assignment',
-            extra_info=extra_info
+            phone=user['phone']
         )
         
         # Add notification status to the response
@@ -311,23 +298,12 @@ def close_ticket(id):
         # Create the notification message
         notification_message = f"Ticket #{id} ({category}/{sub_category}) se cerro."
         
-        # Create extra_info for RabbitMQ
-        extra_info = {
-            "ticket_id": id,
-            "category": category,
-            "sub_category": sub_category,
-            "last_comment": None,
-            "comment_author": None,
-            "phone": user['phone'],
-            "user_name": user['user_name']
-        }
-        
         # Send notification via RabbitMQ
         notification_success = rabbitmq.publish_notification(
             user_id=ticket['user_id'],
             message=notification_message,
             notification_type='ticket',
-            extra_info=extra_info
+            phone=user['phone']
         )
         
         # Add notification status to the response
