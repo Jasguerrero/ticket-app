@@ -186,6 +186,19 @@ services:
       timeout: 5s
       retries: 5
       start_period: 40s
+  
+  scheduler-service:
+    build:
+      dockerfile: scheduler/Dockerfile
+    container_name: scheduler_service
+    restart: unless-stopped
+    ports:
+      - "4177:4177"
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - ticket-app_postgres_network
 
 volumes:
   postgres_data:

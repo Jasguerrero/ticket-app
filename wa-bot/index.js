@@ -87,8 +87,8 @@ const setupScheduledTasks = async (sock) => {
   // Set up new intervals
   periodicMessageInterval = setInterval(
     () => sendPeriodicMessage(sock, tibiaGroupSet, redisClient), 
-    5 * 30 * 1000
-  ); // Every 5 minutes
+    2.5 * 60 * 1000
+  ); // Every 2.5 minutes
 
   // Start the RabbitMQ consumer
   console.log('Initializing RabbitMQ notification consumer...');
