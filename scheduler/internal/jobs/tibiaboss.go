@@ -74,7 +74,7 @@ func (j *TibiaBossJob) Run() {
 		// Create image URL if image exists
 		publicImageURL := ""
 		if imageFilename != "" {
-			publicImageURL = fmt.Sprintf("%s/images/boss_images/%s", j.cfg.ServerURL, imageFilename)
+			publicImageURL = fmt.Sprintf("%s/images/%s", j.cfg.ServerURL, imageFilename)
 		}
 
 		// Create notification message

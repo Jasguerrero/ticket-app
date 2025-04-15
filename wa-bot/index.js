@@ -3,7 +3,6 @@ const { MongoClient } = require('mongodb');
 const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { handleTibiaResponse } = require('./tibia/responses');
-const { sendPeriodicMessage } = require('./utils/util');
 const { startNotificationConsumer } = require('./utils/consumer');
 const redis = require('redis');
 
@@ -54,16 +53,10 @@ const connectToMongo = async () => {
 };
 
 // Store references to intervals so we can clear them on reconnection
-let periodicMessageInterval = null;
 let rabbitMQConsumer = null;
 
 // Function to clear existing intervals
 const clearIntervals = async () => {
-  if (periodicMessageInterval) {
-    clearInterval(periodicMessageInterval);
-    periodicMessageInterval = null;
-  }
-
   if (rabbitMQConsumer) {
     try {
       if (rabbitMQConsumer.channel) {
@@ -83,16 +76,10 @@ const clearIntervals = async () => {
 const setupScheduledTasks = async (sock) => {
   // Clear any existing intervals first
   await clearIntervals();
-  
-  // Set up new intervals
-  periodicMessageInterval = setInterval(
-    () => sendPeriodicMessage(sock, tibiaGroupSet, redisClient), 
-    2.5 * 60 * 1000
-  ); // Every 2.5 minutes
 
   // Start the RabbitMQ consumer
   console.log('Initializing RabbitMQ notification consumer...');
-  rabbitMQConsumer = await startNotificationConsumer(sock, mongoClient);
+  rabbitMQConsumer = await startNotificationConsumer(sock, mongoClient, tibiaGroupSet);
   
   console.log('Scheduled tasks initialized');
 };

@@ -1,4 +1,5 @@
 const amqp = require('amqplib');
+const { processTibiaNotification } = require('../tibia/notification');
 
 /**
  * Starts a RabbitMQ consumer that processes WhatsApp notification messages
@@ -6,7 +7,7 @@ const amqp = require('amqplib');
  * @param {Object} mongoClient - MongoDB client connection
  * @returns {Promise<Object>} - Returns the RabbitMQ connection and channel
  */
-const startNotificationConsumer = async (sock, mongoClient) => {
+const startNotificationConsumer = async (sock, mongoClient, chatIDs) => {
     try {
         console.log('Starting RabbitMQ notification consumer...');
         
@@ -43,14 +44,16 @@ const startNotificationConsumer = async (sock, mongoClient) => {
                     notificationRecord.message = notification;
                     
                     // Process the notification
-                    const phoneNumber = notification.phone
-                    if (phoneNumber && notification.message) {
+                    if (notification.type == "tibia_notification") {
+                        notificationResult = await processTibiaNotification(notificationRecord, notification, sock, channel, msg, chatIDs)
+                    }
+                    else if (notification.phone && notification.message) {
                         notificationResult = await processNotification(notificationRecord, notification, sock, channel, msg)
                     } else {
                         console.error('Invalid message format, missing phone or message:', notification);
                         // Don't requeue invalid messages
                         channel.ack(msg);
-                        if (!phoneNumber) {
+                        if (!notification.phone) {
                             notificationRecord.status = 'missing_phone';
                         } else {
                             notificationRecord.status = 'missing_message';
@@ -82,7 +85,7 @@ const startNotificationConsumer = async (sock, mongoClient) => {
             console.log('RabbitMQ connection closed, attempting to reconnect...');
             // Wait before attempting to reconnect
             await new Promise(resolve => setTimeout(resolve, 5000));
-            return startNotificationConsumer(sock, mongoClient);
+            return startNotificationConsumer(sock, mongoClient, chatIDs);
         });
     
         // Handle errors
@@ -95,7 +98,7 @@ const startNotificationConsumer = async (sock, mongoClient) => {
         console.error('Failed to start notification consumer:', error);
         // Wait before retry
         await new Promise(resolve => setTimeout(resolve, 5000));
-        return startNotificationConsumer(sock, mongoClient);
+        return startNotificationConsumer(sock, mongoClient, chatIDs);
     }
 };
 
