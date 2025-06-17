@@ -178,7 +178,7 @@ const startBot = async () => {
         }
       }
       else if(tibiaGroupSet.has(from)) {
-        const [r, imagePath] = await handleTibiaResponse(msg, from, sock);
+        const [r, imagePath] = await handleTibiaResponse(msg, from, sock, message);
         if (r == '') {
             return;
         }

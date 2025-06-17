@@ -19,7 +19,73 @@ function isValidTibiaCommand(parts) {
   return validCommands.has(command);
 }
 
-const handleTibiaResponse = async (msg, jid, sock) => {
+const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
+  // Get bot's number/JID
+  const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+  const botNumberOnly = sock.user.id.split(':')[0];
+  
+  // Check if bot is mentioned - mentions are in contextInfo
+  let isBotMentioned = false;
+  
+  // Check in extendedTextMessage contextInfo
+  const contextInfo = messageObj.message?.extendedTextMessage?.contextInfo;
+  if (contextInfo && contextInfo.mentionedJid) {
+    console.log('Mentioned JIDs:', contextInfo.mentionedJid);
+    isBotMentioned = contextInfo.mentionedJid.includes(botNumber);
+  }
+  
+  // Also check in conversation message if it exists
+  if (!isBotMentioned && messageObj.message?.conversation) {
+    // Sometimes mentions are just in the text as @number
+    const mentionPattern = /@(\d+)/g;
+    const matches = messageObj.message.conversation.match(mentionPattern);
+    if (matches) {
+      isBotMentioned = matches.some(match => match.substring(1) === botNumberOnly);
+    }
+  }
+  
+  console.log('Is bot mentioned:', isBotMentioned);
+  
+  if (isBotMentioned) {
+    // Remove mentions from message
+    let cleanMsg = msg.replace(/@\d+/g, '').replace(/\s+/g, ' ').trim();
+    
+    // If message is empty after removing mention, default to "hi"
+    if (cleanMsg === '' || cleanMsg.length === 0) {
+      cleanMsg = 'hi';
+    }
+    
+    console.log('Bot was mentioned in the message!', cleanMsg);
+    
+    try {
+      await sock.sendPresenceUpdate('composing', jid);
+      
+      // Make POST request to localhost:8045/ask
+      const response = await fetch('http://209.38.65.194:8045/ask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: cleanMsg
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      await sock.sendPresenceUpdate('paused', jid);
+      
+      return [result.response, ''];
+      
+    } catch (error) {
+      console.error('Error making request:', error);
+      await sock.sendPresenceUpdate('paused', jid);
+      return [error.message, ''];
+    }
+  }
   // Split the message by whitespace
   const parts = msg.trim().split(/\s+/);
   if (!isValidTibiaCommand(parts)) {
