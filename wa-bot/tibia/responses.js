@@ -61,7 +61,7 @@ const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
       await sock.sendPresenceUpdate('composing', jid);
       
       // Make POST request to localhost:8045/ask
-      const response = await fetch('http://209.38.65.194:8045/ask', {
+      const response = await fetch(`http://${process.env.TIBIA_AGENT_URL}:8045/ask`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
