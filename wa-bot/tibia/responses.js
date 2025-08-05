@@ -31,7 +31,8 @@ const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
   const contextInfo = messageObj.message?.extendedTextMessage?.contextInfo;
   if (contextInfo && contextInfo.mentionedJid) {
     console.log('Mentioned JIDs:', contextInfo.mentionedJid);
-    isBotMentioned = contextInfo.mentionedJid.includes(botNumber);
+    // Check if any mentioned JID contains the bot's number (handles both @s.whatsapp.net and @lid formats)
+    isBotMentioned = contextInfo.mentionedJid.some(jid => jid.includes(botNumberOnly));
   }
   
   // Also check in conversation message if it exists
