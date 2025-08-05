@@ -28,12 +28,6 @@ function TicketForm({ user, onTicketCreated }) {
     'TRAMITES ESCOLARES': ['KARDEX', 'TITULO', 'SERVICIO SOCIAL']
   };
 
-  // Define priority options with Spanish display names
-  const priorityOptions = [
-    { value: 'low', label: 'Baja' },
-    { value: 'medium', label: 'Media' },
-    { value: 'high', label: 'Alta' }
-  ];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -148,27 +142,6 @@ function TicketForm({ user, onTicketCreated }) {
                 </div>
               </div>
 
-              <div className="sm:col-span-3">
-                <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
-                  Prioridad
-                </label>
-                <div className="mt-1">
-                  <select
-                    id="priority"
-                    name="priority"
-                    value={newTicket.priority}
-                    onChange={handleInputChange}
-                    required
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  >
-                    {priorityOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
 
               <div className="sm:col-span-6">
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700">
