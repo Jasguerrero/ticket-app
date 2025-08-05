@@ -23,6 +23,8 @@ const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
   // Get bot's number/JID
   const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
   const botNumberOnly = sock.user.id.split(':')[0];
+  console.log('Bot full ID:', sock.user.id);
+  console.log('Bot number only:', botNumberOnly);
   
   // Check if bot is mentioned - mentions are in contextInfo
   let isBotMentioned = false;
