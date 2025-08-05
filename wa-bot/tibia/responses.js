@@ -37,28 +37,10 @@ const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
   if (contextInfo && contextInfo.mentionedJid) {
     console.log('Mentioned JIDs:', contextInfo.mentionedJid);
     
-    // Check if bot is mentioned by resolving JIDs to actual numbers
-    for (const mentionedJid of contextInfo.mentionedJid) {
-      try {
-        // Try to resolve the JID to get the actual phone number
-        const resolved = await sock.onWhatsApp(mentionedJid.split('@')[0]);
-        if (resolved && resolved.length > 0) {
-          const actualJid = resolved[0].jid;
-          console.log(`Resolved ${mentionedJid} to ${actualJid}`);
-          if (actualJid === sock.user.id) {
-            isBotMentioned = true;
-            break;
-          }
-        }
-      } catch (err) {
-        // Fallback to simple number comparison
-        const mentionedNumber = mentionedJid.split('@')[0];
-        if (mentionedNumber === botNumberOnly) {
-          isBotMentioned = true;
-          break;
-        }
-      }
-    }
+    // Hardcoded check for the bot mention
+    isBotMentioned = contextInfo.mentionedJid.some(jid => 
+      jid.includes('44174342656116') || jid.includes(botNumberOnly)
+    );
   }
   
   // Also check in conversation message if it exists
