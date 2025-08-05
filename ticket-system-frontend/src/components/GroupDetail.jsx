@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import { markAnnouncementAsRead } from '../api/userDataService';
 
 function GroupDetail({ groupId, user, onBack }) {
   const [group, setGroup] = useState(null);
@@ -89,6 +90,25 @@ function GroupDetail({ groupId, user, onBack }) {
       });
       
       setAnnouncements(response.data);
+      
+      // Mark unread announcements as read when tab is viewed (for students only)
+      if (user.user_role !== 'teacher') {
+        const unreadAnnouncements = response.data.filter(ann => !ann.is_read);
+        for (const announcement of unreadAnnouncements) {
+          try {
+            await markAnnouncementAsRead(announcement.id, user.id);
+          } catch (error) {
+            console.error('Failed to mark announcement as read:', error);
+          }
+        }
+        
+        // Update local state to reflect read status
+        if (unreadAnnouncements.length > 0) {
+          setAnnouncements(prev => 
+            prev.map(ann => ({ ...ann, is_read: true }))
+          );
+        }
+      }
       
     } catch (err) {
       console.error('Failed to fetch announcements:', err);
@@ -370,16 +390,19 @@ function GroupDetail({ groupId, user, onBack }) {
           >
             Detalles
           </button>
-          <button
-            onClick={fetchMembers}
-            className={`pb-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'members'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Miembros {group?.member_count ? `(${group.member_count})` : ''}
-          </button>
+          {/* Members tab - Only for teachers */}
+          {user.user_role === 'teacher' && (
+            <button
+              onClick={fetchMembers}
+              className={`pb-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'members'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Miembros {group?.member_count ? `(${group.member_count})` : ''}
+            </button>
+          )}
           <button
             onClick={fetchAnnouncements}
             className={`pb-4 px-1 border-b-2 font-medium text-sm ${
@@ -425,8 +448,8 @@ function GroupDetail({ groupId, user, onBack }) {
         </div>
       )}
 
-      {/* Members Tab */}
-      {activeTab === 'members' && (
+      {/* Members Tab - Only for teachers */}
+      {activeTab === 'members' && user.user_role === 'teacher' && (
         <div>
           {/* Add Upload Button */}
           {!showUploadForm && !uploadSuccess && (
@@ -622,8 +645,8 @@ function GroupDetail({ groupId, user, onBack }) {
       {/* Announcements Tab */}
       {activeTab === 'announcements' && (
         <div>
-          {/* Add Announcement Button */}
-          {!showAnnouncementForm && (
+          {/* Add Announcement Button - Only for teachers */}
+          {user.user_role === 'teacher' && !showAnnouncementForm && (
             <div className="mb-6">
               <button
                 onClick={() => setShowAnnouncementForm(true)}
@@ -637,8 +660,8 @@ function GroupDetail({ groupId, user, onBack }) {
             </div>
           )}
 
-          {/* Announcement Form */}
-          {showAnnouncementForm && (
+          {/* Announcement Form - Only for teachers */}
+          {user.user_role === 'teacher' && showAnnouncementForm && (
             <div className="bg-white shadow sm:rounded-lg mb-6">
               <div className="px-4 py-5 sm:p-6">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -739,19 +762,23 @@ function GroupDetail({ groupId, user, onBack }) {
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No hay anuncios</h3>
               <p className="mt-1 text-sm text-gray-500">
-                ¡Empieza creando tu primer anuncio para el grupo!
+                {user.user_role === 'teacher' 
+                  ? '¡Empieza creando tu primer anuncio para el grupo!' 
+                  : 'Tu profesor aún no ha publicado anuncios en este grupo.'}
               </p>
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowAnnouncementForm(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                  </svg>
-                  Crear anuncio
-                </button>
-              </div>
+              {user.user_role === 'teacher' && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowAnnouncementForm(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                    </svg>
+                    Crear anuncio
+                  </button>
+                </div>
+              )}
             </div>
           ) : !showAnnouncementForm && (
             <div className="space-y-4">
@@ -770,20 +797,23 @@ function GroupDetail({ groupId, user, onBack }) {
                           Publicado el {new Date(announcement.created_at).toLocaleDateString()} a las {new Date(announcement.created_at).toLocaleTimeString()}
                         </p>
                       </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEditAnnouncement(announcement)}
-                          className="text-sm text-blue-600 hover:text-blue-500"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAnnouncement(announcement.id)}
-                          className="text-sm text-red-600 hover:text-red-500"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
+                      {/* Edit and Delete buttons - Only for teachers */}
+                      {user.user_role === 'teacher' && (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditAnnouncement(announcement)}
+                            className="text-sm text-blue-600 hover:text-blue-500"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAnnouncement(announcement.id)}
+                            className="text-sm text-red-600 hover:text-red-500"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="mt-4 text-sm text-gray-900 whitespace-pre-line">
                       {announcement.content}

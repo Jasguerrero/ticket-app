@@ -1,4 +1,4 @@
-function GroupList({ groups, loading }) {
+function GroupList({ groups, loading, onViewGroup }) {
     if (loading) {
       return (
         <div className="flex justify-center items-center py-12">
@@ -27,7 +27,7 @@ function GroupList({ groups, loading }) {
           <div 
             key={group.id} 
             className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-300"
-            onClick={() => window.location.href = `/groups/${group.id}`}
+            onClick={() => onViewGroup && onViewGroup(group.id)}
           >
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900 truncate">

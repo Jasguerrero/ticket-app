@@ -3,10 +3,11 @@ import TicketDetail from './TicketDetail';
 import TicketForm from './TicketForm';
 import TicketList from './TicketList';
 import GroupList from './GroupList';
+import GroupDetail from './GroupDetail';
 import AnnouncementList from './AnnouncementList';
 import AnnouncementDetail from './AnnouncementDetail';
 import NavigationTabs from './NavigationTabs';
-import { fetchUserTickets, fetchClosedTickets, fetchUserGroups, fetchUserAnnouncements } from '../api/userDataService';
+import { fetchUserTickets, fetchClosedTickets, fetchUserGroups, fetchUserAnnouncements, markAnnouncementAsRead as apiMarkAnnouncementAsRead } from '../api/userDataService';
 
 function UserDashboard({ user }) {
   const [tickets, setTickets] = useState([]);
@@ -17,12 +18,14 @@ function UserDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('create'); // Default to create ticket view
   const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
 
   // Function to handle tab changes
   const handleTabChange = async (tab) => {
     setActiveTab(tab);
     setSelectedTicketId(null);
     setSelectedAnnouncement(null);
+    setSelectedGroupId(null);
     
     if (tab === 'open') {
       await loadUserTickets();
@@ -110,10 +113,16 @@ function UserDashboard({ user }) {
     }
   };
 
+  // Handle group detail view
+  const handleViewGroupDetail = (groupId) => {
+    setSelectedGroupId(groupId);
+  };
+
   // Mark announcement as read
   const markAnnouncementAsRead = async (announcementId) => {
     try {
-      // API call moved to userDataService.js
+      // Make API call to mark announcement as read
+      await apiMarkAnnouncementAsRead(announcementId, user.id);
       
       // Update the local state to mark this announcement as read
       setAnnouncements(prev => 
@@ -130,6 +139,7 @@ function UserDashboard({ user }) {
   const handleBackFromDetail = () => {
     setSelectedTicketId(null);
     setSelectedAnnouncement(null);
+    setSelectedGroupId(null);
   };
 
   // Handle ticket creation success
@@ -156,6 +166,19 @@ function UserDashboard({ user }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <AnnouncementDetail 
           announcement={selectedAnnouncement}
+          onBack={handleBackFromDetail}
+        />
+      </div>
+    );
+  }
+
+  // Render group detail view
+  if (selectedGroupId) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <GroupDetail 
+          groupId={selectedGroupId}
+          user={user}
           onBack={handleBackFromDetail}
         />
       </div>
@@ -217,7 +240,8 @@ function UserDashboard({ user }) {
       {activeTab === 'groups' && (
         <GroupList 
           groups={groups} 
-          loading={loading} 
+          loading={loading}
+          onViewGroup={handleViewGroupDetail}
         />
       )}
       
