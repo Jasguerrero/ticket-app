@@ -1,6 +1,6 @@
 require('dotenv').config({ path: './wa-bot/.env' });
 const { MongoClient } = require('mongodb');
-const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { handleTibiaResponse } = require('./tibia/responses');
 const { sendPeriodicMessage } = require('./utils/util');
@@ -104,10 +104,7 @@ const startBot = async () => {
   try {
     await connectToMongo();
     const { state, saveCreds } = await useMultiFileAuthState('./wa-bot/auth_info');
-    const store = makeInMemoryStore({});
     const sock = makeWASocket({ auth: state, printQRInTerminal: true });
-
-    store.bind(sock.ev);
 
     // Listen for QR code
     sock.ev.on('connection.update', (update) => {
