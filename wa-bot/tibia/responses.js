@@ -20,6 +20,9 @@ function isValidTibiaCommand(parts) {
 }
 
 const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
+  // Debug: Log the entire message object structure
+  console.log('Full message object:', JSON.stringify(messageObj, null, 2));
+  
   // Get bot's number/JID
   const botNumber = sock.user.id.split(':')[0] + '@s.whatsapp.net';
   const botNumberOnly = sock.user.id.split(':')[0];
@@ -33,8 +36,29 @@ const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
   const contextInfo = messageObj.message?.extendedTextMessage?.contextInfo;
   if (contextInfo && contextInfo.mentionedJid) {
     console.log('Mentioned JIDs:', contextInfo.mentionedJid);
-    // Check if any mentioned JID contains the bot's number (handles both @s.whatsapp.net and @lid formats)
-    isBotMentioned = contextInfo.mentionedJid.some(jid => jid.includes(botNumberOnly));
+    
+    // Check if bot is mentioned by resolving JIDs to actual numbers
+    for (const mentionedJid of contextInfo.mentionedJid) {
+      try {
+        // Try to resolve the JID to get the actual phone number
+        const resolved = await sock.onWhatsApp(mentionedJid.split('@')[0]);
+        if (resolved && resolved.length > 0) {
+          const actualJid = resolved[0].jid;
+          console.log(`Resolved ${mentionedJid} to ${actualJid}`);
+          if (actualJid === sock.user.id) {
+            isBotMentioned = true;
+            break;
+          }
+        }
+      } catch (err) {
+        // Fallback to simple number comparison
+        const mentionedNumber = mentionedJid.split('@')[0];
+        if (mentionedNumber === botNumberOnly) {
+          isBotMentioned = true;
+          break;
+        }
+      }
+    }
   }
   
   // Also check in conversation message if it exists
