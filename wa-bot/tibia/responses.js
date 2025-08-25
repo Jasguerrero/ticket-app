@@ -39,7 +39,7 @@ const handleTibiaResponse = async (msg, jid, sock, messageObj) => {
     
     // Hardcoded check for the bot mention
     isBotMentioned = contextInfo.mentionedJid.some(jid => 
-      jid.includes('44174342656116') || jid.includes(botNumberOnly)
+      jid.includes('44174342656116') || jid.includes(botNumberOnly) || jid.includes('120363402087739578')
     );
   }
   
